@@ -211,6 +211,7 @@
         <div class="controls" id="screen-controls">
             <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
             <button class="control-btn" id="normal-screen-btn">จอปกติ</button>
+            <button class="control-btn" id="auto-play-btn">เล่นอัตโนมัติ: เปิด</button>
         </div>
         <div class="volume-control" id="volume-control">
             <button class="volume-btn" id="mute-btn">🔊</button>
@@ -255,47 +256,72 @@
             }, 3000);
         }
         
+        // ตัวแปรสำหรับการเล่นอัตโนมัติ
+        let autoPlayEnabled = true;
+        let player;
+        
         // สร้างตัวเล่นวิดีโอ
-        var player = new Clappr.Player({
-            source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
-            mimeType: 'application/dash+xml',
-            height: '100%',
-            width: '100%',
-            autoPlay: true,
-            plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
-            events: {
-                onReady: function() {
-                    // ซ่อนข้อความกำลังโหลด
-                    document.querySelector('.loading').style.display = 'none';
-                    
-                    // ปิดการคลิกเพื่อหยุดชั่วคราว
-                    var plugin = this.getPlugin('click_to_pause');
-                    plugin && plugin.disable();
-                    
-                    // ตั้งค่าเสียงเริ่มต้น
-                    this.setVolume(100);
-                    
-                    // แสดงปุ่มควบคุมชั่วคราวเมื่อโหลดเสร็จ
-                    showControlsTemporarily();
-                },
-                onError: function(e) {
-                    document.querySelector('.loading').textContent = 'เกิดข้อผิดพลาดในการโหลดวิดีโอ';
-                }
-            },
-            chromecast: {
-                preload: 'metadata',
-                contentType: 'video/mpd',
-            },
-            shakaConfiguration: {
-                drm: {
-                    clearKeys: {
-                        '9c5735afb4fd402580360aed8364469c': '128d55d9ac2b47ad85f86b5d08320179'
+        function initializePlayer() {
+            player = new Clappr.Player({
+                source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
+                mimeType: 'application/dash+xml',
+                height: '100%',
+                width: '100%',
+                autoPlay: autoPlayEnabled,
+                plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
+                events: {
+                    onReady: function() {
+                        // ซ่อนข้อความกำลังโหลด
+                        document.querySelector('.loading').style.display = 'none';
+                        
+                        // ปิดการคลิกเพื่อหยุดชั่วคราว
+                        var plugin = this.getPlugin('click_to_pause');
+                        plugin && plugin.disable();
+                        
+                        // ตั้งค่าเสียงเริ่มต้น
+                        this.setVolume(100);
+                        
+                        // แสดงปุ่มควบคุมชั่วคราวเมื่อโหลดเสร็จ
+                        showControlsTemporarily();
+                    },
+                    onError: function(e) {
+                        document.querySelector('.loading').textContent = 'เกิดข้อผิดพลาดในการโหลดวิดีโอ';
+                        
+                        // ถ้าเปิดโหมดเล่นอัตโนมัติและเกิดข้อผิดพลาด ให้ลองโหลดใหม่ใน 5 วินาที
+                        if (autoPlayEnabled) {
+                            setTimeout(() => {
+                                player.destroy();
+                                initializePlayer();
+                            }, 5000);
+                        }
+                    },
+                    onEnded: function() {
+                        // ถ้าเปิดโหมดเล่นอัตโนมัติและวิดีโอจบ ให้เล่นใหม่
+                        if (autoPlayEnabled) {
+                            setTimeout(() => {
+                                player.play();
+                            }, 1000);
+                        }
                     }
                 },
-            },
-            shakaOnBeforeLoad: function (shaka_player) {},
-            parentId: '#player'
-        });
+                chromecast: {
+                    preload: 'metadata',
+                    contentType: 'video/mpd',
+                },
+                shakaConfiguration: {
+                    drm: {
+                        clearKeys: {
+                            '9c5735afb4fd402580360aed8364469c': '128d55d9ac2b47ad85f86b5d08320179'
+                        }
+                    },
+                },
+                shakaOnBeforeLoad: function (shaka_player) {},
+                parentId: '#player'
+            });
+        }
+        
+        // เริ่มต้นโหลดตัวเล่น
+        initializePlayer();
         
         // การจัดการปุ่มควบคุม
         document.getElementById('fullscreen-btn').addEventListener('click', function() {
@@ -308,6 +334,20 @@
                 toggleFullscreen(document.getElementById('player-wrapper'));
                 showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
             }
+        });
+        
+        // การจัดการปุ่มเล่นอัตโนมัติ
+        const autoPlayBtn = document.getElementById('auto-play-btn');
+        autoPlayBtn.addEventListener('click', function() {
+            autoPlayEnabled = !autoPlayEnabled;
+            autoPlayBtn.textContent = autoPlayEnabled ? 'เล่นอัตโนมัติ: เปิด' : 'เล่นอัตโนมัติ: ปิด';
+            
+            // หากเปิดโหมดเล่นอัตโนมัติและวิดีโอหยุด ให้เล่นต่อ
+            if (autoPlayEnabled && player && !player.isPlaying()) {
+                player.play();
+            }
+            
+            showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
         });
         
         // การจัดการควบคุมเสียง
@@ -386,6 +426,24 @@
         function switchToM3U8(m3u8Url) {
             player.load(m3u8Url, 'application/x-mpegURL');
         }
+        
+        // ฟังก์ชันสำหรับรีสตาร์ทสตรีมเมื่อมีการตัดสัญญาณ
+        function restartStream() {
+            if (player && autoPlayEnabled) {
+                player.destroy();
+                document.querySelector('.loading').style.display = 'block';
+                document.querySelector('.loading').textContent = 'กำลังโหลด NUTV';
+                initializePlayer();
+            }
+        }
+        
+        // ตรวจสอบการเชื่อมต่อเป็นระยะ (ทุก 30 วินาที)
+        setInterval(() => {
+            if (player && autoPlayEnabled && !player.isPlaying()) {
+                console.log('ตรวจพบสตรีมหยุดทำงาน, กำลังรีสตาร์ท...');
+                restartStream();
+            }
+        }, 30000);
     </script>
 </body>
 </html>
