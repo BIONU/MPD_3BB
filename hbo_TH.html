@@ -60,6 +60,12 @@
             z-index: 1000;
             display: flex;
             gap: 10px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .controls.show {
+            opacity: 1;
         }
         
         .control-btn {
@@ -75,24 +81,6 @@
         
         .control-btn:hover {
             background-color: rgba(255, 255, 0, 0.2);
-        }
-        
-        .center-text {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            z-index: 1000;
-        }
-        
-        .center-text p {
-            background-color: rgba(0, 0, 0, 0.5);
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 5px;
-            font-size: 18px;
         }
         
         /* สไตล์สำหรับโหมดเต็มจอ */
@@ -134,12 +122,9 @@
         <div id="player"></div>
         <div class="loading">กำลังโหลด NUTV</div>
         <span class="nutv-label"><em>NUTV</em></span>
-        <div class="controls">
+        <div class="controls" id="screen-controls">
             <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
             <button class="control-btn" id="normal-screen-btn">จอปกติ</button>
-        </div>
-        <div class="center-text">
-            <p><ins>NUTV 3BB</ins></p>
         </div>
     </div>
 
@@ -165,6 +150,17 @@
             }
         }
         
+        // แสดงปุ่มควบคุมชั่วคราว
+        function showControlsTemporarily() {
+            const controls = document.getElementById('screen-controls');
+            controls.classList.add('show');
+            
+            // ซ่อนปุ่มหลังจาก 3 วินาที
+            setTimeout(() => {
+                controls.classList.remove('show');
+            }, 3000);
+        }
+        
         // สร้างตัวเล่นวิดีโอ
         var player = new Clappr.Player({
             source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
@@ -182,8 +178,8 @@
                     var plugin = this.getPlugin('click_to_pause');
                     plugin && plugin.disable();
                     
-                    // เริ่มต้นในโหมดเต็มจอ (ทางเลือก)
-                    // toggleFullscreen(document.getElementById('player-wrapper'));
+                    // แสดงปุ่มควบคุมชั่วคราวเมื่อโหลดเสร็จ
+                    showControlsTemporarily();
                 },
                 onError: function(e) {
                     document.querySelector('.loading').textContent = 'เกิดข้อผิดพลาดในการโหลดวิดีโอ';
@@ -207,11 +203,13 @@
         // การจัดการปุ่มควบคุม
         document.getElementById('fullscreen-btn').addEventListener('click', function() {
             toggleFullscreen(document.getElementById('player-wrapper'));
+            showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
         });
         
         document.getElementById('normal-screen-btn').addEventListener('click', function() {
             if (document.fullscreenElement) {
                 toggleFullscreen(document.getElementById('player-wrapper'));
+                showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
             }
         });
         
@@ -227,6 +225,18 @@
                 document.getElementById('player-wrapper').classList.remove('fullscreen');
             }
         }
+        
+        // แสดงปุ่มควบคุมเมื่อเลื่อนเมาส์ใกล้ด้านล่าง
+        document.getElementById('player-wrapper').addEventListener('mousemove', function(e) {
+            const rect = this.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+            const height = rect.height;
+            
+            // ถ้าเมาส์อยู่ใกล้ด้านล่าง (ภายใน 100px)
+            if (height - mouseY < 100) {
+                showControlsTemporarily();
+            }
+        });
         
         // ฟังก์ชันสำหรับเปลี่ยนไปใช้ M3U8 หากมี URL
         function switchToM3U8(m3u8Url) {
