@@ -115,6 +115,92 @@
             60% { text-shadow: .25em 0 0 white, .5em 0 0 rgba(255,255,255,0); }
             80%, 100% { text-shadow: .25em 0 0 white, .5em 0 0 white; }
         }
+        
+        /* สไตล์สำหรับการควบคุมเสียง */
+        .volume-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .volume-control.show {
+            opacity: 1;
+        }
+        
+        .volume-btn {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #ff0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        
+        .volume-btn:hover {
+            background-color: rgba(255, 255, 0, 0.2);
+        }
+        
+        .volume-slider {
+            width: 100px;
+            height: 5px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #ff0;
+            cursor: pointer;
+        }
+        
+        .volume-slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #ff0;
+            cursor: pointer;
+            border: none;
+        }
+        
+        /* สำหรับหน้าจอมือถือ */
+        @media (max-width: 768px) {
+            .volume-control {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .volume-slider {
+                width: 80px;
+            }
+            
+            .controls {
+                bottom: 10px;
+                left: 10px;
+            }
+            
+            .nutv-label {
+                bottom: 10px;
+                right: 10px;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -125,6 +211,10 @@
         <div class="controls" id="screen-controls">
             <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
             <button class="control-btn" id="normal-screen-btn">จอปกติ</button>
+        </div>
+        <div class="volume-control" id="volume-control">
+            <button class="volume-btn" id="mute-btn">🔊</button>
+            <input type="range" min="0" max="100" value="100" class="volume-slider" id="volume-slider">
         </div>
     </div>
 
@@ -153,11 +243,15 @@
         // แสดงปุ่มควบคุมชั่วคราว
         function showControlsTemporarily() {
             const controls = document.getElementById('screen-controls');
+            const volumeControl = document.getElementById('volume-control');
+            
             controls.classList.add('show');
+            volumeControl.classList.add('show');
             
             // ซ่อนปุ่มหลังจาก 3 วินาที
             setTimeout(() => {
                 controls.classList.remove('show');
+                volumeControl.classList.remove('show');
             }, 3000);
         }
         
@@ -177,6 +271,9 @@
                     // ปิดการคลิกเพื่อหยุดชั่วคราว
                     var plugin = this.getPlugin('click_to_pause');
                     plugin && plugin.disable();
+                    
+                    // ตั้งค่าเสียงเริ่มต้น
+                    this.setVolume(100);
                     
                     // แสดงปุ่มควบคุมชั่วคราวเมื่อโหลดเสร็จ
                     showControlsTemporarily();
@@ -213,6 +310,48 @@
             }
         });
         
+        // การจัดการควบคุมเสียง
+        const volumeSlider = document.getElementById('volume-slider');
+        const muteBtn = document.getElementById('mute-btn');
+        let isMuted = false;
+        let previousVolume = 100;
+        
+        // ฟังก์ชันอัปเดตเสียง
+        function updateVolume(value) {
+            player.setVolume(value);
+            volumeSlider.value = value;
+            
+            // อัปเดตไอคอนปุ่มเสียง
+            if (value == 0) {
+                muteBtn.textContent = '🔇';
+                isMuted = true;
+            } else if (value < 50) {
+                muteBtn.textContent = '🔈';
+                isMuted = false;
+            } else {
+                muteBtn.textContent = '🔊';
+                isMuted = false;
+            }
+        }
+        
+        // เมื่อเลื่อนแถบเสียง
+        volumeSlider.addEventListener('input', function() {
+            updateVolume(this.value);
+        });
+        
+        // เมื่อคลิกปุ่มปิดเสียง
+        muteBtn.addEventListener('click', function() {
+            if (isMuted) {
+                // เปิดเสียง
+                updateVolume(previousVolume);
+            } else {
+                // ปิดเสียง
+                previousVolume = volumeSlider.value;
+                updateVolume(0);
+            }
+            showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
+        });
+        
         // ตรวจจับการเปลี่ยนแปลงโหมดเต็มจอ
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
@@ -236,6 +375,11 @@
             if (height - mouseY < 100) {
                 showControlsTemporarily();
             }
+        });
+        
+        // แสดงปุ่มควบคุมเมื่อแตะบนมือถือ
+        document.getElementById('player-wrapper').addEventListener('touchstart', function() {
+            showControlsTemporarily();
         });
         
         // ฟังก์ชันสำหรับเปลี่ยนไปใช้ M3U8 หากมี URL
