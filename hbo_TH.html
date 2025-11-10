@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>NUTV 3BB</title>
+    <title>NUTV 3BB - Full Screen</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" type="text/css" href="/clap.css">
     <script src="//cdn.jsdelivr.net/npm/@clappr/player@0.4.0/dist/clappr.min.js"></script>
@@ -15,40 +15,157 @@
     <script src="//cdn.jsdelivr.net/gh/clappr/dash-shaka-playback@latest/dist/dash-shaka-playback.external.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/cdnbye-shaka@latest"></script>
     <style>
-        body {
-            background-color: #000000;
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000000;
             font-family: Arial, sans-serif;
-        }
-        #player {
-            width: 100vw;
+            overflow: hidden;
             height: 100vh;
+            width: 100vw;
         }
+        
+        #player-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #player {
+            width: 100%;
+            height: 100%;
+        }
+        
         .nutv-label {
             position: absolute;
-            bottom: 10px;
+            bottom: 20px;
             right: 20px;
-            font-size: 15px;
+            font-size: 18px;
             font-weight: bold;
             color: #ff0;
             z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
         }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #ff0;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background-color: rgba(255, 255, 0, 0.2);
+        }
+        
         .center-text {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
             text-align: center;
             color: white;
-            margin-top: 10px;
+            z-index: 1000;
+        }
+        
+        .center-text p {
+            background-color: rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        
+        /* สไตล์สำหรับโหมดเต็มจอ */
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+        }
+        
+        /* เอฟเฟกต์โหลด */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 1001;
+        }
+        
+        .loading:after {
+            content: '...';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { color: rgba(255,255,255,0); text-shadow: .25em 0 0 rgba(255,255,255,0), .5em 0 0 rgba(255,255,255,0); }
+            40% { color: white; text-shadow: .25em 0 0 rgba(255,255,255,0), .5em 0 0 rgba(255,255,255,0); }
+            60% { text-shadow: .25em 0 0 white, .5em 0 0 rgba(255,255,255,0); }
+            80%, 100% { text-shadow: .25em 0 0 white, .5em 0 0 white; }
         }
     </style>
 </head>
 <body>
-    <div id="player"></div>
-    <span class="nutv-label"><em>NUTV</em></span>
-    <div class="center-text">
-        <p><ins>NUTV</ins></p>
+    <div id="player-wrapper">
+        <div id="player"></div>
+        <div class="loading">กำลังโหลด NUTV</div>
+        <span class="nutv-label"><em>NUTV</em></span>
+        <div class="controls">
+            <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
+            <button class="control-btn" id="normal-screen-btn">จอปกติ</button>
+        </div>
+        <div class="center-text">
+            <p><ins>NUTV 3BB</ins></p>
+        </div>
     </div>
 
     <script>
+        // ฟังก์ชันสำหรับสลับโหมดเต็มจอ
+        function toggleFullscreen(element) {
+            if (!document.fullscreenElement) {
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+        
+        // สร้างตัวเล่นวิดีโอ
         var player = new Clappr.Player({
             source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
             mimeType: 'application/dash+xml',
@@ -58,8 +175,18 @@
             plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
             events: {
                 onReady: function() {
+                    // ซ่อนข้อความกำลังโหลด
+                    document.querySelector('.loading').style.display = 'none';
+                    
+                    // ปิดการคลิกเพื่อหยุดชั่วคราว
                     var plugin = this.getPlugin('click_to_pause');
                     plugin && plugin.disable();
+                    
+                    // เริ่มต้นในโหมดเต็มจอ (ทางเลือก)
+                    // toggleFullscreen(document.getElementById('player-wrapper'));
+                },
+                onError: function(e) {
+                    document.querySelector('.loading').textContent = 'เกิดข้อผิดพลาดในการโหลดวิดีโอ';
                 }
             },
             chromecast: {
@@ -77,12 +204,34 @@
             parentId: '#player'
         });
         
+        // การจัดการปุ่มควบคุม
+        document.getElementById('fullscreen-btn').addEventListener('click', function() {
+            toggleFullscreen(document.getElementById('player-wrapper'));
+        });
+        
+        document.getElementById('normal-screen-btn').addEventListener('click', function() {
+            if (document.fullscreenElement) {
+                toggleFullscreen(document.getElementById('player-wrapper'));
+            }
+        });
+        
+        // ตรวจจับการเปลี่ยนแปลงโหมดเต็มจอ
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+        
+        function handleFullscreenChange() {
+            if (document.fullscreenElement) {
+                document.getElementById('player-wrapper').classList.add('fullscreen');
+            } else {
+                document.getElementById('player-wrapper').classList.remove('fullscreen');
+            }
+        }
+        
         // ฟังก์ชันสำหรับเปลี่ยนไปใช้ M3U8 หากมี URL
         function switchToM3U8(m3u8Url) {
             player.load(m3u8Url, 'application/x-mpegURL');
         }
-        
-        // ตัวอย่างการใช้งาน: switchToM3U8('https://example.com/stream.m3u8');
     </script>
 </body>
 </html>
