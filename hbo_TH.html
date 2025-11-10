@@ -201,12 +201,51 @@
                 font-size: 14px;
             }
         }
+        
+        /* สไตล์สำหรับปุ่มเล่นเมื่อเบราว์เซอร์บล็อก */
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1002;
+            color: white;
+            text-align: center;
+        }
+        
+        .play-overlay-btn {
+            background-color: #ff0;
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        .play-overlay-btn:hover {
+            background-color: #ffcc00;
+        }
     </style>
 </head>
 <body>
     <div id="player-wrapper">
         <div id="player"></div>
         <div class="loading">กำลังโหลด NUTV</div>
+        <div id="play-overlay" class="play-overlay" style="display: none;">
+            <p>เบราว์เซอร์บล็อกการเล่นอัตโนมัติ</p>
+            <p>กรุณากดปุ่มด้านล่างเพื่อเริ่มเล่น</p>
+            <button class="play-overlay-btn" id="manual-play-btn">เริ่มเล่น</button>
+        </div>
         <span class="nutv-label"><em>NUTV</em></span>
         <div class="controls" id="screen-controls">
             <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
@@ -259,6 +298,7 @@
         // ตัวแปรสำหรับการเล่นอัตโนมัติ
         let autoPlayEnabled = true;
         let player;
+        let playPromise;
         
         // สร้างตัวเล่นวิดีโอ
         function initializePlayer() {
@@ -268,6 +308,7 @@
                 height: '100%',
                 width: '100%',
                 autoPlay: autoPlayEnabled,
+                mute: false, // ไม่ปิดเสียงเพื่อให้เล่นอัตโนมัติได้
                 plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
                 events: {
                     onReady: function() {
@@ -280,6 +321,15 @@
                         
                         // ตั้งค่าเสียงเริ่มต้น
                         this.setVolume(100);
+                        
+                        // พยายามเล่นอัตโนมัติ
+                        if (autoPlayEnabled) {
+                            playPromise = this.play().catch(error => {
+                                console.log('การเล่นอัตโนมัติถูกบล็อก:', error);
+                                // แสดงปุ่มให้ผู้ใช้กดเล่นเอง
+                                document.getElementById('play-overlay').style.display = 'flex';
+                            });
+                        }
                         
                         // แสดงปุ่มควบคุมชั่วคราวเมื่อโหลดเสร็จ
                         showControlsTemporarily();
@@ -299,9 +349,13 @@
                         // ถ้าเปิดโหมดเล่นอัตโนมัติและวิดีโอจบ ให้เล่นใหม่
                         if (autoPlayEnabled) {
                             setTimeout(() => {
-                                player.play();
+                                this.play();
                             }, 1000);
                         }
+                    },
+                    onPlay: function() {
+                        // ซ่อน overlay เมื่อเริ่มเล่น
+                        document.getElementById('play-overlay').style.display = 'none';
                     }
                 },
                 chromecast: {
@@ -344,10 +398,21 @@
             
             // หากเปิดโหมดเล่นอัตโนมัติและวิดีโอหยุด ให้เล่นต่อ
             if (autoPlayEnabled && player && !player.isPlaying()) {
-                player.play();
+                player.play().catch(error => {
+                    console.log('การเล่นอัตโนมัติถูกบล็อก:', error);
+                    document.getElementById('play-overlay').style.display = 'flex';
+                });
             }
             
             showControlsTemporarily(); // แสดงปุ่มชั่วคราวอีกครั้ง
+        });
+        
+        // การจัดการปุ่มเล่นเมื่อเบราว์เซอร์บล็อก
+        document.getElementById('manual-play-btn').addEventListener('click', function() {
+            if (player) {
+                player.play();
+                document.getElementById('play-overlay').style.display = 'none';
+            }
         });
         
         // การจัดการควบคุมเสียง
@@ -429,10 +494,12 @@
         
         // ฟังก์ชันสำหรับรีสตาร์ทสตรีมเมื่อมีการตัดสัญญาณ
         function restartStream() {
-            if (player && autoPlayEnabled) {
+            if (player && autoPlayEnabled && !player.isPlaying()) {
+                console.log('ตรวจพบสตรีมหยุดทำงาน, กำลังรีสตาร์ท...');
                 player.destroy();
                 document.querySelector('.loading').style.display = 'block';
                 document.querySelector('.loading').textContent = 'กำลังโหลด NUTV';
+                document.getElementById('play-overlay').style.display = 'none';
                 initializePlayer();
             }
         }
@@ -440,10 +507,17 @@
         // ตรวจสอบการเชื่อมต่อเป็นระยะ (ทุก 30 วินาที)
         setInterval(() => {
             if (player && autoPlayEnabled && !player.isPlaying()) {
-                console.log('ตรวจพบสตรีมหยุดทำงาน, กำลังรีสตาร์ท...');
                 restartStream();
             }
         }, 30000);
+        
+        // ตรวจสอบการเชื่อมต่อเมื่อโฟกัสกลับมาที่หน้าเว็บ
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && autoPlayEnabled && player && !player.isPlaying()) {
+                // ถ้าหน้าเว็บกลับมาแสดงและสตรีมหยุด ให้รีสตาร์ท
+                setTimeout(restartStream, 1000);
+            }
+        });
     </script>
 </body>
 </html>
