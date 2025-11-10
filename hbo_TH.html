@@ -1,51 +1,88 @@
-<html>
+<!DOCTYPE html>
+<html lang="th">
 <head>
-<title>NUTV 3BB</title>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,shrink-to-fit=no">
-<link rel="stylesheet" type="text/css" href="/clap.css">
-<script src="//cdn.jsdelivr.net/npm/@clappr/player@0.4.0/dist/clappr.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/mux.js@5.6.7/dist/mux.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/level-selector@latest/dist/level-selector.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/clappr-chromecast-plugin@latest/dist/clappr-chromecast-plugin.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/clappr-pip@latest/dist/clappr-pip.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/clappr-playback-rate-plugin@latest/dist/clappr-playback-rate-plugin.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/shaka-player@2.5.10/dist/shaka-player.compiled.min.js"></script>
-<script src="//cdn.jsdelivr.net/gh/clappr/dash-shaka-playback@latest/dist/dash-shaka-playback.external.min.js"></script>
-<script src="//cdn.jsdelivr.net/npm/cdnbye-shaka@latest"></script>
-<style> 
-body {
-    background-color: #000000;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>NUTV 3BB</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" type="text/css" href="/clap.css">
+    <script src="//cdn.jsdelivr.net/npm/@clappr/player@0.4.0/dist/clappr.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/mux.js@5.6.7/dist/mux.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/level-selector@latest/dist/level-selector.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-chromecast-plugin@latest/dist/clappr-chromecast-plugin.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-pip@latest/dist/clappr-pip.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-playback-rate-plugin@latest/dist/clappr-playback-rate-plugin.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/shaka-player@2.5.10/dist/shaka-player.compiled.min.js"></script>
+    <script src="//cdn.jsdelivr.net/gh/clappr/dash-shaka-playback@latest/dist/dash-shaka-playback.external.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/cdnbye-shaka@latest"></script>
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #player {
+            width: 100vw;
+            height: 100vh;
+        }
+        .nutv-label {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #ff0;
+            z-index: 1000;
+        }
+        .center-text {
+            text-align: center;
+            color: white;
+            margin-top: 10px;
+        }
+    </style>
 </head>
-<div id="player"></div>
-<script>
-  var player = new Clappr.Player({
-          source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
-          mimeType: 'application/dash+xml',
-          height: '100%',
-          width: '100%',
-          autoPlay: true,
-          plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
-          events: {onReady: function() {var plugin = this.getPlugin('click_to_pause'); plugin && plugin.disable();},},
-          chromecast: {
-              preload: 'metadata',
-              contentType: 'video/mpd',
-          },
-          shakaConfiguration: {
-              drm: {
-              clearKeys: {
-					'9c5735afb4fd402580360aed8364469c':'128d55d9ac2b47ad85f86b5d08320179'		
-                  }
-              },
-          },
-          shakaOnBeforeLoad: function (shaka_player) {},
-          parentId: '#player'
-      });
-	  
-  </script>
-    <span style='position:absolute;bottom:10px;right:20px;font-size: 15px; font-weight: bold;color: #ff0;'><em>NUTV</em></span>
-   <center>
-  <p><ins>NUTV</ins></p>
-   </center>
+<body>
+    <div id="player"></div>
+    <span class="nutv-label"><em>NUTV</em></span>
+    <div class="center-text">
+        <p><ins>NUTV</ins></p>
+    </div>
+
+    <script>
+        var player = new Clappr.Player({
+            source: 'https://npt-streamer3.cdn.3bbtv.com:8443/3bb/live/103/103.mpd',
+            mimeType: 'application/dash+xml',
+            height: '100%',
+            width: '100%',
+            autoPlay: true,
+            plugins: [LevelSelector, DashShakaPlayback, Clappr.MediaControl],
+            events: {
+                onReady: function() {
+                    var plugin = this.getPlugin('click_to_pause');
+                    plugin && plugin.disable();
+                }
+            },
+            chromecast: {
+                preload: 'metadata',
+                contentType: 'video/mpd',
+            },
+            shakaConfiguration: {
+                drm: {
+                    clearKeys: {
+                        '9c5735afb4fd402580360aed8364469c': '128d55d9ac2b47ad85f86b5d08320179'
+                    }
+                },
+            },
+            shakaOnBeforeLoad: function (shaka_player) {},
+            parentId: '#player'
+        });
+        
+        // ฟังก์ชันสำหรับเปลี่ยนไปใช้ M3U8 หากมี URL
+        function switchToM3U8(m3u8Url) {
+            player.load(m3u8Url, 'application/x-mpegURL');
+        }
+        
+        // ตัวอย่างการใช้งาน: switchToM3U8('https://example.com/stream.m3u8');
+    </script>
+</body>
 </html>
