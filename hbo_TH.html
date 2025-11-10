@@ -182,12 +182,17 @@
         /* สำหรับหน้าจอมือถือ */
         @media (max-width: 768px) {
             .volume-control {
-                top: 10px;
-                right: 10px;
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+                flex-direction: column;
+                align-items: center;
             }
             
             .volume-slider {
-                width: 80px;
+                width: 5px;
+                height: 80px;
+                transform: rotate(180deg);
             }
             
             .controls {
@@ -199,6 +204,22 @@
                 bottom: 10px;
                 right: 10px;
                 font-size: 14px;
+            }
+        }
+        
+        /* สำหรับโทรศัพท์ในแนวตั้ง */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .volume-control {
+                top: 50%;
+                right: 20px;
+                transform: translateY(-50%);
+                flex-direction: column;
+            }
+            
+            .volume-slider {
+                width: 5px;
+                height: 100px;
+                transform: rotate(180deg);
             }
         }
     </style>
