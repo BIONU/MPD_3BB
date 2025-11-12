@@ -1,0 +1,330 @@
+{
+  "htmlDocument": {
+    "doctype": "<!DOCTYPE html>",
+    "html": {
+      "lang": "th",
+      "head": {
+        "meta": [
+          {
+            "charset": "UTF-8"
+          },
+          {
+            "name": "viewport",
+            "content": "width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"
+          }
+        ],
+        "title": "HBO 3BB - Full Screen",
+        "stylesheets": [],
+        "scripts": [
+          "https://cdn.jsdelivr.net/npm/clappr@0.4.0/dist/clappr.min.js",
+          "https://cdn.jsdelivr.net/npm/clappr-level-selector@latest/dist/level-selector.min.js",
+          "https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"
+        ]
+      },
+      "body": {
+        "structure": {
+          "playerWrapper": {
+            "id": "player-wrapper",
+            "elements": [
+              {
+                "type": "div",
+                "id": "player"
+              },
+              {
+                "type": "div",
+                "class": "loading",
+                "text": "กำลังโหลด HBO 3BB"
+              },
+              {
+                "type": "div",
+                "id": "play-overlay",
+                "class": "play-overlay",
+                "style": "display: none;",
+                "elements": [
+                  {
+                    "type": "p",
+                    "text": "เบราว์เซอร์บล็อกการเล่นอัตโนมัติ"
+                  },
+                  {
+                    "type": "p",
+                    "text": "กรุณากดปุ่มด้านล่างเพื่อเริ่มเล่น"
+                  },
+                  {
+                    "type": "button",
+                    "class": "play-overlay-btn",
+                    "id": "manual-play-btn",
+                    "text": "เริ่มเล่น"
+                  }
+                ]
+              },
+              {
+                "type": "span",
+                "class": "channel-label",
+                "html": "<em>HBO 3BB</em>"
+              },
+              {
+                "type": "div",
+                "class": "controls",
+                "id": "screen-controls",
+                "elements": [
+                  {
+                    "type": "button",
+                    "class": "control-btn",
+                    "id": "fullscreen-btn",
+                    "text": "เต็มจอ"
+                  },
+                  {
+                    "type": "button",
+                    "class": "control-btn",
+                    "id": "normal-screen-btn",
+                    "text": "จอปกติ"
+                  },
+                  {
+                    "type": "button",
+                    "class": "control-btn",
+                    "id": "auto-play-btn",
+                    "text": "เล่นอัตโนมัติ: เปิด"
+                  },
+                  {
+                    "type": "button",
+                    "class": "control-btn",
+                    "id": "reload-btn",
+                    "text": "โหลดใหม่"
+                  }
+                ]
+              },
+              {
+                "type": "div",
+                "class": "volume-control",
+                "id": "volume-control",
+                "elements": [
+                  {
+                    "type": "button",
+                    "class": "volume-btn",
+                    "id": "mute-btn",
+                    "text": "🔊"
+                  },
+                  {
+                    "type": "input",
+                    "class": "volume-slider",
+                    "id": "volume-slider",
+                    "attributes": {
+                      "type": "range",
+                      "min": "0",
+                      "max": "100",
+                      "value": "100"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "div",
+                "id": "error-message",
+                "class": "error-message",
+                "style": "display: none;"
+              }
+            ]
+          }
+        },
+        "javascript": {
+          "functions": {
+            "toggleFullscreen": "ฟังก์ชันสำหรับสลับโหมดเต็มจอ",
+            "showControlsTemporarily": "แสดงปุ่มควบคุมชั่วคราว",
+            "initializePlayer": "สร้างตัวเล่นวิดีโอ",
+            "handleFullscreenChange": "จัดการการเปลี่ยนแปลงโหมดเต็มจอ",
+            "updateVolume": "อัปเดตระดับเสียง",
+            "showError": "แสดงข้อผิดพลาด",
+            "restartStream": "รีสตาร์ทสตรีมเมื่อมีการตัดสัญญาณ",
+            "loadPlayerWithFallback": "โหลดตัวเล่นพร้อมระบบสำรอง"
+          },
+          "variables": {
+            "autoPlayEnabled": true,
+            "player": null,
+            "playPromise": null,
+            "isMuted": false,
+            "previousVolume": 100,
+            "currentSourceIndex": 0,
+            "streamSources": [
+              "https://dl.dropbox.com/scl/fi/8iqjpejvquci1l8m2c21u/HBO_3BB.m3u?rlkey=b2nrv1aik5pf5iyx40o2ihbv9&st=i6tvy2pa&dl=1",
+              "https://raw.githubusercontent.com/freearhey/m3u-parser/master/test/samples/valid.m3u"
+            ]
+          },
+          "eventListeners": [
+            "fullscreen-btn: click - สลับโหมดเต็มจอ",
+            "normal-screen-btn: click - ออกจากโหมดเต็มจอ",
+            "auto-play-btn: click - สลับโหมดเล่นอัตโนมัติ",
+            "reload-btn: click - โหลดสตรีมใหม่",
+            "manual-play-btn: click - เริ่มเล่นเมื่อเบราว์เซอร์บล็อก",
+            "volume-slider: input - ควบคุมระดับเสียง",
+            "mute-btn: click - ปิด/เปิดเสียง",
+            "player-wrapper: mousemove - แสดงปุ่มควบคุมเมื่อเมาส์ใกล้ด้านล่าง",
+            "player-wrapper: touchstart - แสดงปุ่มควบคุมบนมือถือ",
+            "document: fullscreenchange - ตอบสนองการเปลี่ยนแปลงโหมดเต็มจอ",
+            "document: visibilitychange - ตรวจสอบเมื่อหน้าเว็บกลับมาแสดง"
+          ],
+          "intervals": {
+            "streamCheck": "ตรวจสอบการเชื่อมต่อทุก 30 วินาที"
+          }
+        }
+      }
+    }
+  },
+  "playerConfiguration": {
+    "source": "https://dl.dropbox.com/scl/fi/8iqjpejvquci1l8m2c21u/HBO_3BB.m3u?rlkey=b2nrv1aik5pf5iyx40o2ihbv9&st=i6tvy2pa&dl=1",
+    "height": "100%",
+    "width": "100%",
+    "autoPlay": true,
+    "mute": false,
+    "plugins": [{"name": "level-selector", "plugin": LevelSelector}],
+    "hlsjsConfig": {
+      "enableWorker": true,
+      "lowLatencyMode": true,
+      "backBufferLength": 90,
+      "maxBufferSize": 50 * 1000 * 1000,
+      "maxBufferLength": 50,
+      "liveSyncDurationCount": 3,
+      "liveMaxLatencyDurationCount": 10
+    },
+    "playback": {
+      "hlsjs": {
+        "autoStartLoad": true,
+        "startPosition": -1
+      }
+    },
+    "events": {
+      "onReady": "function() { /* จัดการเมื่อตัวเล่นพร้อม */ }",
+      "onError": "function(error) { /* จัดการข้อผิดพลาด */ }",
+      "onPlay": "function() { /* จัดการเมื่อเริ่มเล่น */ }"
+    },
+    "parentId": "#player"
+  },
+  "cssStyles": {
+    "general": {
+      "reset": "* { margin: 0; padding: 0; box-sizing: border-box; }",
+      "body": "background-color: #000000; font-family: Arial, sans-serif; overflow: hidden; height: 100vh; width: 100vw;"
+    },
+    "playerWrapper": {
+      "position": "relative",
+      "width": "100%",
+      "height": "100%"
+    },
+    "player": {
+      "width": "100%",
+      "height": "100%"
+    },
+    "channelLabel": {
+      "position": "absolute",
+      "bottom": "20px",
+      "right": "20px",
+      "fontSize": "18px",
+      "fontWeight": "bold",
+      "color": "#ff0",
+      "zIndex": "1000",
+      "backgroundColor": "rgba(0, 0, 0, 0.5)",
+      "padding": "5px 10px",
+      "borderRadius": "5px"
+    },
+    "controls": {
+      "position": "absolute",
+      "bottom": "20px",
+      "left": "20px",
+      "zIndex": "1000",
+      "display": "flex",
+      "gap": "10px",
+      "opacity": "0",
+      "transition": "opacity 0.5s ease"
+    },
+    "controlBtn": {
+      "backgroundColor": "rgba(0, 0, 0, 0.7)",
+      "color": "white",
+      "border": "1px solid #ff0",
+      "padding": "8px 15px",
+      "borderRadius": "5px",
+      "cursor": "pointer",
+      "fontSize": "14px",
+      "transition": "all 0.3s"
+    },
+    "fullscreen": {
+      "position": "fixed",
+      "top": "0",
+      "left": "0",
+      "width": "100vw",
+      "height": "100vh",
+      "zIndex": "9999"
+    },
+    "loading": {
+      "position": "absolute",
+      "top": "50%",
+      "left": "50%",
+      "transform": "translate(-50%, -50%)",
+      "color": "white",
+      "fontSize": "18px",
+      "zIndex": "1001"
+    },
+    "volumeControl": {
+      "position": "absolute",
+      "top": "20px",
+      "right": "20px",
+      "zIndex": "1000",
+      "display": "flex",
+      "alignItems": "center",
+      "gap": "10px",
+      "opacity": "0",
+      "transition": "opacity 0.5s ease"
+    },
+    "playOverlay": {
+      "position": "absolute",
+      "top": "0",
+      "left": "0",
+      "width": "100%",
+      "height": "100%",
+      "backgroundColor": "rgba(0, 0, 0, 0.7)",
+      "display": "flex",
+      "flexDirection": "column",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "zIndex": "1002",
+      "color": "white",
+      "textAlign": "center"
+    },
+    "errorMessage": {
+      "position": "absolute",
+      "top": "50%",
+      "left": "50%",
+      "transform": "translate(-50%, -50%)",
+      "backgroundColor": "rgba(255, 0, 0, 0.8)",
+      "color": "white",
+      "padding": "20px",
+      "borderRadius": "10px",
+      "textAlign": "center",
+      "zIndex": "1003",
+      "display": "none"
+    }
+  },
+  "features": {
+    "autoPlay": true,
+    "fullscreen": true,
+    "volumeControl": true,
+    "mobileSupport": true,
+    "streamRestart": true,
+    "errorHandling": true,
+    "touchControls": true,
+    "fallbackStreams": true,
+    "hlsSupport": true,
+    "reloadButton": true
+  },
+  "troubleshooting": {
+    "commonIssues": [
+      "CORS error - ต้องใช้ proxy หรือเซิร์ฟเวอร์ที่รองรับ CORS",
+      "Dropbox link - ต้องเปลี่ยนจาก dl=0 เป็น dl=1 เพื่อดาวน์โหลดไฟล์",
+      "HLS format - ต้องแน่ใจว่าไฟล์ M3U8 ถูกต้องและสามารถเข้าถึงได้",
+      "SSL certificate - ต้องใช้ HTTPS สำหรับการเล่นวิดีโอ"
+    ],
+    "solutions": [
+      "ใช้ CORS proxy สำหรับไฟล์ M3U8",
+      "โฮสต์ไฟล์ M3U8 บนเซิร์ฟเวอร์ที่รองรับ CORS",
+      "ตรวจสอบว่าไฟล์ M3U8 มีลิงก์ TS ที่ถูกต้อง",
+      "ใช้เซิร์ฟเวอร์ HTTPS สำหรับการให้บริการสตรีม"
+    ]
+  }
+}
