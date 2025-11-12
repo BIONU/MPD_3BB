@@ -13,8 +13,7 @@
             "content": "width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"
           }
         ],
-        "title": "HBO 3BB - Full Screen",
-        "stylesheets": [],
+        "title": "HBO 3BB - Full Screen Player",
         "scripts": [
           "https://cdn.jsdelivr.net/npm/clappr@0.4.0/dist/clappr.min.js",
           "https://cdn.jsdelivr.net/npm/clappr-level-selector@latest/dist/level-selector.min.js",
@@ -58,6 +57,12 @@
                 ]
               },
               {
+                "type": "div",
+                "id": "error-message",
+                "class": "error-message",
+                "style": "display: none;"
+              },
+              {
                 "type": "span",
                 "class": "channel-label",
                 "html": "<em>HBO 3BB</em>"
@@ -76,20 +81,14 @@
                   {
                     "type": "button",
                     "class": "control-btn",
-                    "id": "normal-screen-btn",
-                    "text": "จอปกติ"
+                    "id": "reload-btn",
+                    "text": "โหลดใหม่"
                   },
                   {
                     "type": "button",
                     "class": "control-btn",
                     "id": "auto-play-btn",
                     "text": "เล่นอัตโนมัติ: เปิด"
-                  },
-                  {
-                    "type": "button",
-                    "class": "control-btn",
-                    "id": "reload-btn",
-                    "text": "โหลดใหม่"
                   }
                 ]
               },
@@ -116,12 +115,6 @@
                     }
                   }
                 ]
-              },
-              {
-                "type": "div",
-                "id": "error-message",
-                "class": "error-message",
-                "style": "display: none;"
               }
             ]
           }
@@ -134,8 +127,8 @@
             "handleFullscreenChange": "จัดการการเปลี่ยนแปลงโหมดเต็มจอ",
             "updateVolume": "อัปเดตระดับเสียง",
             "showError": "แสดงข้อผิดพลาด",
-            "restartStream": "รีสตาร์ทสตรีมเมื่อมีการตัดสัญญาณ",
-            "loadPlayerWithFallback": "โหลดตัวเล่นพร้อมระบบสำรอง"
+            "restartStream": "รีสตาร์ทสตรีม",
+            "testM3U8Url": "ทดสอบ URL M3U8"
           },
           "variables": {
             "autoPlayEnabled": true,
@@ -143,17 +136,16 @@
             "playPromise": null,
             "isMuted": false,
             "previousVolume": 100,
-            "currentSourceIndex": 0,
-            "streamSources": [
-              "https://dl.dropbox.com/scl/fi/8iqjpejvquci1l8m2c21u/HBO_3BB.m3u?rlkey=b2nrv1aik5pf5iyx40o2ihbv9&st=i6tvy2pa&dl=1",
-              "https://raw.githubusercontent.com/freearhey/m3u-parser/master/test/samples/valid.m3u"
+            "m3u8Url": "https://raw.githubusercontent.com/your-username/your-repo/main/HBO_3BB.m3u8",
+            "fallbackUrls": [
+              "https://raw.githubusercontent.com/your-username/your-repo/main/HBO_3BB.m3u8",
+              "https://gist.githubusercontent.com/your-username/your-gist-id/raw/HBO_3BB.m3u8"
             ]
           },
           "eventListeners": [
             "fullscreen-btn: click - สลับโหมดเต็มจอ",
-            "normal-screen-btn: click - ออกจากโหมดเต็มจอ",
-            "auto-play-btn: click - สลับโหมดเล่นอัตโนมัติ",
             "reload-btn: click - โหลดสตรีมใหม่",
+            "auto-play-btn: click - สลับโหมดเล่นอัตโนมัติ",
             "manual-play-btn: click - เริ่มเล่นเมื่อเบราว์เซอร์บล็อก",
             "volume-slider: input - ควบคุมระดับเสียง",
             "mute-btn: click - ปิด/เปิดเสียง",
@@ -161,16 +153,13 @@
             "player-wrapper: touchstart - แสดงปุ่มควบคุมบนมือถือ",
             "document: fullscreenchange - ตอบสนองการเปลี่ยนแปลงโหมดเต็มจอ",
             "document: visibilitychange - ตรวจสอบเมื่อหน้าเว็บกลับมาแสดง"
-          ],
-          "intervals": {
-            "streamCheck": "ตรวจสอบการเชื่อมต่อทุก 30 วินาที"
-          }
+          ]
         }
       }
     }
   },
   "playerConfiguration": {
-    "source": "https://dl.dropbox.com/scl/fi/8iqjpejvquci1l8m2c21u/HBO_3BB.m3u?rlkey=b2nrv1aik5pf5iyx40o2ihbv9&st=i6tvy2pa&dl=1",
+    "source": "https://raw.githubusercontent.com/your-username/your-repo/main/HBO_3BB.m3u8",
     "height": "100%",
     "width": "100%",
     "autoPlay": true,
@@ -180,21 +169,22 @@
       "enableWorker": true,
       "lowLatencyMode": true,
       "backBufferLength": 90,
-      "maxBufferSize": 50 * 1000 * 1000,
-      "maxBufferLength": 50,
+      "maxMaxBufferLength": 600,
+      "maxBufferSize": 60 * 1000 * 1000,
       "liveSyncDurationCount": 3,
-      "liveMaxLatencyDurationCount": 10
+      "liveMaxLatencyDurationCount": 10,
+      "stretchShortVideoTrack": true,
+      "maxLiveSyncPlaybackRate": 1.1
     },
     "playback": {
-      "hlsjs": {
-        "autoStartLoad": true,
-        "startPosition": -1
-      }
+      "playsinline": true,
+      "crossOrigin": "anonymous",
+      "preload": "auto"
     },
     "events": {
-      "onReady": "function() { /* จัดการเมื่อตัวเล่นพร้อม */ }",
-      "onError": "function(error) { /* จัดการข้อผิดพลาด */ }",
-      "onPlay": "function() { /* จัดการเมื่อเริ่มเล่น */ }"
+      "onReady": "handlePlayerReady",
+      "onError": "handlePlayerError",
+      "onPlay": "handlePlayerPlay"
     },
     "parentId": "#player"
   },
@@ -206,7 +196,8 @@
     "playerWrapper": {
       "position": "relative",
       "width": "100%",
-      "height": "100%"
+      "height": "100%",
+      "backgroundColor": "#000"
     },
     "player": {
       "width": "100%",
@@ -244,14 +235,6 @@
       "fontSize": "14px",
       "transition": "all 0.3s"
     },
-    "fullscreen": {
-      "position": "fixed",
-      "top": "0",
-      "left": "0",
-      "width": "100vw",
-      "height": "100vh",
-      "zIndex": "9999"
-    },
     "loading": {
       "position": "absolute",
       "top": "50%",
@@ -261,16 +244,19 @@
       "fontSize": "18px",
       "zIndex": "1001"
     },
-    "volumeControl": {
+    "errorMessage": {
       "position": "absolute",
-      "top": "20px",
-      "right": "20px",
-      "zIndex": "1000",
-      "display": "flex",
-      "alignItems": "center",
-      "gap": "10px",
-      "opacity": "0",
-      "transition": "opacity 0.5s ease"
+      "top": "50%",
+      "left": "50%",
+      "transform": "translate(-50%, -50%)",
+      "backgroundColor": "rgba(255, 0, 0, 0.8)",
+      "color": "white",
+      "padding": "20px",
+      "borderRadius": "10px",
+      "textAlign": "center",
+      "zIndex": "1003",
+      "maxWidth": "80%",
+      "display": "none"
     },
     "playOverlay": {
       "position": "absolute",
@@ -287,44 +273,42 @@
       "color": "white",
       "textAlign": "center"
     },
-    "errorMessage": {
+    "volumeControl": {
       "position": "absolute",
-      "top": "50%",
-      "left": "50%",
-      "transform": "translate(-50%, -50%)",
-      "backgroundColor": "rgba(255, 0, 0, 0.8)",
-      "color": "white",
-      "padding": "20px",
-      "borderRadius": "10px",
-      "textAlign": "center",
-      "zIndex": "1003",
-      "display": "none"
+      "top": "20px",
+      "right": "20px",
+      "zIndex": "1000",
+      "display": "flex",
+      "alignItems": "center",
+      "gap": "10px",
+      "opacity": "0",
+      "transition": "opacity 0.5s ease"
     }
   },
-  "features": {
-    "autoPlay": true,
-    "fullscreen": true,
-    "volumeControl": true,
-    "mobileSupport": true,
-    "streamRestart": true,
-    "errorHandling": true,
-    "touchControls": true,
-    "fallbackStreams": true,
-    "hlsSupport": true,
-    "reloadButton": true
+  "githubSetup": {
+    "requirements": [
+      "ไฟล์ต้องอยู่ในรูปแบบ raw URL",
+      "ใช้รูปแบบ: https://raw.githubusercontent.com/username/repo/branch/filename.m3u8",
+      "ไฟล์ M3U8 ต้องมีลิงก์ TS ที่ถูกต้อง",
+      "ลิงก์ TS ภายในไฟล์ต้องเข้าถึงได้และรองรับ CORS"
+    ],
+    "exampleUrls": {
+      "rawGitHub": "https://raw.githubusercontent.com/your-username/your-repo/main/HBO_3BB.m3u8",
+      "gist": "https://gist.githubusercontent.com/your-username/gist-id/raw/HBO_3BB.m3u8"
+    }
   },
   "troubleshooting": {
     "commonIssues": [
-      "CORS error - ต้องใช้ proxy หรือเซิร์ฟเวอร์ที่รองรับ CORS",
-      "Dropbox link - ต้องเปลี่ยนจาก dl=0 เป็น dl=1 เพื่อดาวน์โหลดไฟล์",
-      "HLS format - ต้องแน่ใจว่าไฟล์ M3U8 ถูกต้องและสามารถเข้าถึงได้",
-      "SSL certificate - ต้องใช้ HTTPS สำหรับการเล่นวิดีโอ"
+      "ไฟล์ M3U8 ไม่มีลิงก์ TS ที่ถูกต้อง",
+      "ลิงก์ TS ภายในไฟล์ M3U8 ไม่รองรับ CORS",
+      "ไฟล์ M3U8 มีรูปแบบไม่ถูกต้อง",
+      "ลิงก์ TS เป็น HTTP ในขณะที่หน้าเว็บเป็น HTTPS"
     ],
     "solutions": [
-      "ใช้ CORS proxy สำหรับไฟล์ M3U8",
-      "โฮสต์ไฟล์ M3U8 บนเซิร์ฟเวอร์ที่รองรับ CORS",
-      "ตรวจสอบว่าไฟล์ M3U8 มีลิงก์ TS ที่ถูกต้อง",
-      "ใช้เซิร์ฟเวอร์ HTTPS สำหรับการให้บริการสตรีม"
+      "ตรวจสอบว่าไฟล์ M3U8 มีลิงก์ TS ที่ทำงานได้",
+      "ใช้ CORS proxy สำหรับลิงก์ TS",
+      "ตรวจสอบรูปแบบไฟล์ M3U8 ด้วยเครื่องมือออนไลน์",
+      "ให้แน่ใจว่าทั้ง M3U8 และลิงก์ TS ใช้ HTTPS"
     ]
   }
 }
