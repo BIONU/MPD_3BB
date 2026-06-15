@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>BIOTV - Full Screen | รองรับ iPhone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" type="text/css" href="/clap.css">
+    <script src="//cdn.jsdelivr.net/npm/@clappr/player@0.4.0/dist/clappr.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/mux.js@5.6.7/dist/mux.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/level-selector@latest/dist/level-selector.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-chromecast-plugin@latest/dist/clappr-chromecast-plugin.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-pip@latest/dist/clappr-pip.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/clappr-playback-rate-plugin@latest/dist/clappr-playback-rate-plugin.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/shaka-player@2.5.10/dist/shaka-player.compiled.min.js"></script>
+    <script src="//cdn.jsdelivr.net/gh/clappr/dash-shaka-playback@latest/dist/dash-shaka-playback.external.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/cdnbye-shaka@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* ป้องกันการเลือกข้อความขณะแตะค้างบนมือถือ */
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background-color: #000000;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        #player-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        #player {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* ป้าย BIOTV มุมขวาล่าง */
+        .biotv-label {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffcc00;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 6px 14px;
+            border-radius: 30px;
+            backdrop-filter: blur(4px);
+            font-family: monospace;
+            letter-spacing: 1px;
+            pointer-events: none;
+            text-shadow: 0 0 2px black;
+        }
+        
+        /* ปุ่มควบคุมแบบลอย (เหมาะกับมือถือ) */
+        .controls {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1100;
+            display: flex;
+            gap: 16px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(12px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 0.5px solid rgba(255, 204, 0, 0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .controls.show {
+            opacity: 1;
+        }
+        
+        .control-btn {
+            background-color: transparent;
+            color: white;
+            border: 1px solid #ffcc00;
+            padding: 8px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+            letter-spacing: 0.5px;
+        }
+        
+        .control-btn:active {
+            background-color: rgba(255, 204, 0, 0.3);
+            transform: scale(0.96);
+        }
+        
+        /* สไตล์สำหรับโหมดเต็มจอ (เพิ่มคลาสไปที่ wrapper เพื่อปรับแต่งเพิ่มเติม) */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: black;
+        }
+        
+        /* ตัวโหลดแบบสวยงาม */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffcc00;
+            font-size: 18px;
+            font-weight: 500;
+            z-index: 1001;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 24px;
+            border-radius: 40px;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+            font-family: monospace;
+        }
+        
+        .loading:after {
+            content: ' ...';
+            animation: dots 1.2s steps(3, end) infinite;
+            display: inline-block;
+            width: 40px;
+            text-align: left;
+        }
+        
+        @keyframes dots {
+            0%, 20% { opacity: 0.3; content: ' .'; }
+            40% { opacity: 0.7; content: ' ..'; }
+            60%, 80%, 100% { opacity: 1; content: ' ...'; }
+        }
+        
+        /* ปรับให้ปุ่มสัมผัสง่ายขึ้นบนมือถือ */
+        @media (max-width: 768px) {
+            .control-btn {
+                padding: 8px 20px;
+                font-size: 15px;
+                min-width: 80px;
+            }
+            .biotv-label {
+                bottom: 15px;
+                right: 15px;
+                font-size: 14px;
+                padding: 4px 12px;
+            }
+            .controls {
+                bottom: 20px;
+                gap: 12px;
+                padding: 8px 16px;
+            }
+        }
+        
+        /* ซ่อนปุ่มควบคุมเดิมของ Clappr ถ้าต้องการให้ดูสะอาดตา (ไม่บังคับ) */
+        .player-controls .controls-bar {
+            background: rgba(0,0,0,0.7);
+        }
+        
+        /* รองรับการแสดงผลแบบ safe area บน iPhone X ขึ้นไป */
+        @supports (padding: max(0px)) {
+            .controls {
+                bottom: max(20px, env(safe-area-inset-bottom));
+            }
+            .biotv-label {
+                bottom: max(15px, env(safe-area-inset-bottom));
+                right: max(15px, env(safe-area-inset-right));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="player-wrapper">
+        <div id="player"></div>
+        <div class="loading" id="loadingIndicator">กำลังโหลด BIOTV</div>
+        <span class="biotv-label"><em>BIOTV</em></span>
+        <div class="controls" id="screen-controls">
+            <button class="control-btn" id="fullscreen-btn">✨ เต็มจอ</button>
+            <button class="control-btn" id="normal-screen-btn">⬜ จอปกติ</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --------------------------------------------------------------
+            // 1. ตรวจจับ iOS (iPhone / iPad / iPod)
+            // --------------------------------------------------------------
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            
+            // เก็บ reference ของ video element (จะได้จาก player ภายหลัง)
+            let videoElement = null;
+            let currentPlayer = null;
+            
+            // ฟังก์ชันสำหรับแสดงปุ่มควบคุมชั่วคราว (ทั้งดีสก์ท็อปและมือถือ)
+            function showControlsTemporarily() {
+                const controls = document.getElementById('screen-controls');
+                if (!controls) return;
+                controls.classList.add('show');
+                if (window.controlsTimeout) clearTimeout(window.controlsTimeout);
+                window.controlsTimeout = setTimeout(() => {
+                    controls.classList.remove('show');
+                }, 3500);
+            }
+            
+            // --------------------------------------------------------------
+            // 2. ฟังก์ชัน Fullscreen แบบ Cross-platform (iOS native + standard)
+            // --------------------------------------------------------------
+            function requestFullscreen(element) {
+                // กรณี iOS: ใช้ video element โดยตรงเพื่อเรียก webkitEnterFullscreen
+                if (isIOS && videoElement && videoElement.webkitEnterFullscreen) {
+                    try {
+                        videoElement.webkitEnterFullscreen();
+                        return true;
+                    } catch (err) {
+                        console.warn("iOS fullscreen error:", err);
+                        // fallback ไป standard fullscreen ถ้าไม่ได้
+                    }
+                }
+                
+                // Standard Fullscreen API สำหรับ Android / Desktop และ iOS ที่รองรับ Fullscreen API บน element ทั่วไป (iOS 16.4+ เริ่มดีขึ้น)
+                const elem = element || document.getElementById('player-wrapper');
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(e => console.warn("Fullscreen request failed", e));
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            }
+            
+            function exitFullscreen() {
+                if (isIOS && videoElement && document.webkitFullscreenElement === undefined && document.fullscreenElement === undefined) {
+                    // ถ้าอยู่ใน native fullscreen ของ iOS video element ให้ออก
+                    if (videoElement.webkitExitFullscreen) {
+                        videoElement.webkitExitFullscreen();
+                        return;
+                    }
+                }
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(e => console.warn("Exit fullscreen error", e));
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+            
+            function isFullscreenActive() {
+                if (isIOS && videoElement) {
+                    // iOS native fullscreen detection: webkitDisplayingFullscreen
+                    if (videoElement.webkitDisplayingFullscreen) return true;
+                }
+                return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            }
+            
+            // สลับเต็มจอ
+            function toggleFullscreen() {
+                if (isFullscreenActive()) {
+                    exitFullscreen();
+                } else {
+                    requestFullscreen(document.getElementById('player-wrapper'));
+                }
+                // แสดงปุ่มชั่วคราวทุกครั้งที่เปลี่ยนสถานะ
+                setTimeout(() => showControlsTemporarily(), 100);
+            }
+            
+            // --------------------------------------------------------------
+            // 3. สร้าง Clappr Player พร้อมปรับแต่งให้ทำงานบน iOS
+            // --------------------------------------------------------------
+            // ข้อมูล DRM Key (จากโจทย์)
+            const drmClearKeys = {
+                '549ab7cd35a64bb6bb479ecead04d69d': '829799ed534d11fcadeb4b192467e050'
+            };
+            
+            const dashSource = 'https://qp-pldt-live-bpk-ucd-prod.akamaized.net/bpk-tv/ch299/default/index.mpd';
+            
+            // ตัวเลือกเพิ่มเติมสำหรับ iOS: playsinline + muted autoplay (เพื่อให้ autoPlay ทำงานบน iOS)
+            // และเปิด allowInlineMediaPlayback
+            const playbackConfig = {
+                playInline: true,        // สำคัญมากสำหรับ iOS ให้เล่นในหน้าเว็บไม่เด้งเต็มจออัตโนมัติ
+                autoPlay: true,
+                muted: true,             // iOS ต้องการ muted เพื่อให้ autoplay ทำงาน (ผู้ใช้สามารถกดเสียงเอง)
+                hlsjsConfig: {
+                    enableWorker: true,
+                    useNativeHls: false,   // ใช้ hls.js แทน native HLS (แต่ source เป็น dash ไม่เกี่ยว)
+                },
+                // เพิ่ม attributes ให้ video element
+                customPlaybackAttributes: {
+                    playsinline: "true",
+                    webkit-playsinline: "true",
+                    x5-playsinline: "true", // สำหรับ Android WebView
+                    autoplay: "true",
+                    muted: "true"
+                }
+            };
+            
+            // รายการ plugins
+            const pluginsList = [
+                LevelSelector,
+                DashShakaPlayback,
+                Clappr.MediaControl,
+                window.ChromecastPlugin,   // ถ้ามี
+                window.PipPlugin,
+                window.PlaybackRatePlugin
+            ].filter(p => p !== undefined);
+            
+            // ตั้งค่า player options
+            const playerOptions = {
+                source: dashSource,
+                mimeType: 'application/dash+xml',
+                height: '100%',
+                width: '100%',
+                autoPlay: true,
+                muted: true,                // สำคัญสำหรับ iOS autoplay
+                plugins: pluginsList,
+                playback: playbackConfig,
+                // ให้แสดง UI ของ Clappr (media control) แต่เราก็มี custom button เสริม
+                mediacontrol: { seekbar: true, buttons: true },
+                // ตั้งค่าช่วงคุณภาพ (LevelSelector)
+                levelSelectorConfig: {
+                    title: 'คุณภาพ',
+                    labels: { auto: 'อัตโนมัติ' }
+                },
+                // Chromecast
+                chromecast: {
+                    preload: 'metadata',
+                    contentType: 'video/mpd',
+                },
+                // Shaka DRM configuration
+                shakaConfiguration: {
+                    drm: {
+                        clearKeys: drmClearKeys
+                    },
+                    // เพิ่ม options ให้ Shaka บน iOS ให้เสถียรขึ้น
+                    streaming: {
+                        bufferingGoal: 30,
+                        rebufferingGoal: 15,
+                    }
+                },
+                shakaOnBeforeLoad: function (shakaPlayer) {
+                    //  callback ก่อนโหลด
+                    console.log("Shaka player is about to load");
+                },
+                parentId: '#player'
+            };
+            
+            // สร้างอินสแตนซ์ Clappr
+            const player = new Clappr.Player(playerOptions);
+            currentPlayer = player;
+            
+            // --------------------------------------------------------------
+            // 4. หลัง player โหลดเสร็จ: ดึง video element, จัดการ event, ตั้งค่าเพิ่มเติม
+            // --------------------------------------------------------------
+            player.on(Clappr.Events.PLAYER_READY, function() {
+                console.log("✅ Player ready - รองรับ iPhone แล้ว");
+                // ซ่อน loading
+                const loadingEl = document.getElementById('loadingIndicator');
+                if (loadingEl) loadingEl.style.display = 'none';
+                
+                // หา video element ที่ Clappr สร้างขึ้น
+                try {
+                    const container = document.querySelector('#player video');
+                    if (container) {
+                        videoElement = container;
+                        // บังคับ attribute playsinline อีกครั้ง เพื่อความชัวร์
+                        videoElement.setAttribute('playsinline', 'true');
+                        videoElement.setAttribute('webkit-playsinline', 'true');
+                        videoElement.setAttribute('muted', 'true');
+                        // ตรวจสอบ autoplay: ถ้าไม่เล่นเอง ให้ลองเรียกเล่น
+                        if (videoElement.paused && videoElement.autoplay !== false) {
+                            videoElement.play().catch(e => console.log("Auto-play blocked, but user can tap to play"));
+                        }
+                        // แสดงปุ่มควบคุมชั่วคราว
+                        showControlsTemporarily();
+                    } else {
+                        console.warn("ไม่พบ video element ใน DOM");
+                    }
+                } catch(e) { console.warn(e); }
+                
+                // ปิดการคลิกเพื่อหยุดชั่วคราว (user experience ดีขึ้น)
+                try {
+                    const clickPausePlugin = player.getPlugin('click_to_pause');
+                    if (clickPausePlugin && clickPausePlugin.disable) clickPausePlugin.disable();
+                } catch(e) {}
+            });
+            
+            // แสดง error หากเกิดปัญหา
+            player.on(Clappr.Events.PLAYER_ERROR, function(err) {
+                console.error("Player Error:", err);
+                const loadingEl = document.getElementById('loadingIndicator');
+                if (loadingEl) {
+                    loadingEl.textContent = "⚠️ เล่นไม่สำเร็จ แตะเพื่อลองใหม่";
+                    loadingEl.style.cursor = "pointer";
+                    loadingEl.onclick = () => {
+                        player.load(dashSource, 'application/dash+xml');
+                        loadingEl.textContent = "กำลังโหลดใหม่...";
+                        loadingEl.style.cursor = "default";
+                    };
+                    setTimeout(() => {
+                        if (loadingEl.style.display !== 'none') loadingEl.style.opacity = "0.8";
+                    }, 2000);
+                }
+            });
+            
+            // เมื่อคลิกที่ wrapper ให้แสดงปุ่มควบคุมชั่วคราว (เหมาะกับมือถือ)
+            const wrapper = document.getElementById('player-wrapper');
+            wrapper.addEventListener('click', (e) => {
+                // ป้องกัน event ไปโดนปุ่มอื่นซ้ำ
+                if (e.target.closest('.control-btn')) return;
+                showControlsTemporarily();
+            });
+            
+            // เลื่อนเมาส์ (Desktop) / touchmove (มือถือ) ก็แสดงปุ่ม
+            wrapper.addEventListener('touchstart', (e) => {
+                // ถ้าแตะใกล้ด้านล่างแสดงปุ่ม
+                const rect = wrapper.getBoundingClientRect();
+                const touchY = e.touches[0].clientY - rect.top;
+                if (rect.height - touchY < 120) {
+                    showControlsTemporarily();
+                } else {
+                    // แสดงแปบๆ เพื่อให้รู้ว่ามีปุ่ม
+                    showControlsTemporarily();
+                }
+            });
+            
+            wrapper.addEventListener('mousemove', (e) => {
+                const rect = wrapper.getBoundingClientRect();
+                const mouseY = e.clientY - rect.top;
+                if (rect.height - mouseY < 100) {
+                    showControlsTemporarily();
+                }
+            });
+            
+            // --------------------------------------------------------------
+            // 5. จัดการ Fullscreen ผ่านปุ่ม custom + event ตรวจจับการเปลี่ยนสถานะ
+            // --------------------------------------------------------------
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const normalBtn = document.getElementById('normal-screen-btn');
+            
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFullscreen();
+                });
+            }
+            
+            if (normalBtn) {
+                normalBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (isFullscreenActive()) {
+                        exitFullscreen();
+                    } else {
+                        // ถ้ายังไม่เต็มจอ ก็ให้ออกจากอะไร? (ไม่ต้องทำ)
+                        console.log("ปกติแล้ว");
+                    }
+                    showControlsTemporarily();
+                });
+            }
+            
+            // ฟัง event fullscreen ทั้งแบบมาตรฐานและ iOS native
+            document.addEventListener('fullscreenchange', updateFullscreenClass);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenClass);
+            // iOS webkit video fullscreen event (เมื่อใช้ webkitEnterFullscreen)
+            if (videoElement) {
+                videoElement.addEventListener('webkitbeginfullscreen', () => {
+                    document.getElementById('player-wrapper')?.classList.add('fullscreen-mode');
+                });
+                videoElement.addEventListener('webkitendfullscreen', () => {
+                    document.getElementById('player-wrapper')?.classList.remove('fullscreen-mode');
+                    showControlsTemporarily();
+                });
+            }
+            
+            function updateFullscreenClass() {
+                const wrapperDiv = document.getElementById('player-wrapper');
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    wrapperDiv.classList.add('fullscreen-mode');
+                } else {
+                    wrapperDiv.classList.remove('fullscreen-mode');
+                }
+                // แสดงปุ่มเมื่อออกหรือเข้าเต็มจอ
+                showControlsTemporarily();
+            }
+            
+            // ตรวจสอบ fullscreen จาก iOS video element เป็นระยะ (options)
+            setInterval(() => {
+                if (isIOS && videoElement && videoElement.webkitDisplayingFullscreen) {
+                    if (!document.getElementById('player-wrapper')?.classList.contains('fullscreen-mode')) {
+                        document.getElementById('player-wrapper')?.classList.add('fullscreen-mode');
+                    }
+                } else if (isIOS && videoElement && !videoElement.webkitDisplayingFullscreen) {
+                    if (document.getElementById('player-wrapper')?.classList.contains('fullscreen-mode') && 
+                        !(document.fullscreenElement || document.webkitFullscreenElement)) {
+                        document.getElementById('player-wrapper')?.classList.remove('fullscreen-mode');
+                    }
+                }
+            }, 500);
+            
+            // --------------------------------------------------------------
+            // 6. เสริมการแตะที่ตัวเล่นให้เล่น/หยุด? ไม่แนะนำ แต่เราต้องการให้แสดงปุ่มแทน
+            //    (ปิดฟีเจอร์หยุดเล่นเมื่อคลิก เพื่อป้องกันการสะดุด)
+            // --------------------------------------------------------------
+            // ให้ลองปิด double tap to pause/play (เพิ่มความเสถียรบน iPhone)
+            setTimeout(() => {
+                if (videoElement) {
+                    // ตั้งค่าให้มิวต์เริ่มต้นแสดงไอคอนเสียง (ผู้ใช้สามารถปลด mute ได้จาก UI ของ Clappr)
+                    videoElement.muted = true;
+                    // เพิ่ม event เพื่อให้แสดงปุ่มทุกครั้งที่มีการแตะบน video
+                    videoElement.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showControlsTemporarily();
+                    });
+                }
+            }, 1000);
+            
+            // --------------------------------------------------------------
+            // 7. รองรับกรณีโหลดนานเกินไป หรือ dash หยุดชะงักบน iOS ให้ลองรีเฟรช
+            // --------------------------------------------------------------
+            let stallTimeout = null;
+            player.on(Clappr.Events.PLAYER_PLAYBACK_STALL, () => {
+                console.log("Playback stall detected, try recovery...");
+                if (stallTimeout) clearTimeout(stallTimeout);
+                stallTimeout = setTimeout(() => {
+                    if (videoElement && videoElement.paused === false && videoElement.readyState < 2) {
+                        console.log("Attempt to reload source due to stall");
+                        player.load(dashSource, 'application/dash+xml');
+                    }
+                }, 3000);
+            });
+            
+            player.on(Clappr.Events.PLAYER_PLAY, () => {
+                if (stallTimeout) clearTimeout(stallTimeout);
+                const loadingEl = document.getElementById('loadingIndicator');
+                if (loadingEl && loadingEl.style.display !== 'none') loadingEl.style.display = 'none';
+            });
+            
+            // เริ่มต้นแสดง loading และบังคับให้คลิกแสดงปุ่ม
+            showControlsTemporarily();
+            
+            // กรณีที่ autoplay ถูกบล็อกโดยนโยบายเบราว์เซอร์ (โดยเฉพาะ iOS 17+)
+            // ให้แสดงคำแนะนำแตะหน้าจอเพื่อเริ่มเล่น
+            setTimeout(() => {
+                if (videoElement && videoElement.paused) {
+                    const loadingDiv = document.getElementById('loadingIndicator');
+                    if (loadingDiv && loadingDiv.style.display !== 'none') {
+                        loadingDiv.innerHTML = "🔊 แตะหน้าจอเพื่อเริ่มเล่น 🎬";
+                        loadingDiv.style.cursor = "pointer";
+                        loadingDiv.onclick = () => {
+                            if (videoElement) {
+                                videoElement.play().then(() => {
+                                    loadingDiv.style.display = "none";
+                                }).catch(e => {
+                                    loadingDiv.innerHTML = "❌ กรุณาแตะอีกครั้ง เพื่อเล่น";
+                                });
+                            }
+                        };
+                    } else {
+                        // สร้าง overlay โปร่งแสงเพื่อให้เริ่มเล่น
+                        const overlay = document.createElement('div');
+                        overlay.style.position = 'absolute';
+                        overlay.style.top = '0';
+                        overlay.style.left = '0';
+                        overlay.style.width = '100%';
+                        overlay.style.height = '100%';
+                        overlay.style.backgroundColor = 'rgba(0,0,0,0.3)';
+                        overlay.style.zIndex = '1002';
+                        overlay.style.display = 'flex';
+                        overlay.style.alignItems = 'center';
+                        overlay.style.justifyContent = 'center';
+                        overlay.style.color = 'white';
+                        overlay.style.fontSize = '18px';
+                        overlay.innerHTML = '🎬 แตะเพื่อเล่น BIOTV';
+                        overlay.style.backdropFilter = 'blur(5px)';
+                        document.getElementById('player-wrapper')?.appendChild(overlay);
+                        overlay.onclick = () => {
+                            if (videoElement) videoElement.play();
+                            overlay.remove();
+                        };
+                        setTimeout(() => { if(overlay.parentNode) overlay.remove(); }, 8000);
+                    }
+                }
+            }, 2000);
+        })();
+    </script>
+</body>
+</html>
