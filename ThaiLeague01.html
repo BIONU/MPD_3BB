@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>NUTV Live - Full Screen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no, user-scalable=no">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* ป้องกันการเลือกข้อความขณะใช้งาน */
+        }
+
+        body {
+            background-color: #000000;
+            font-family: 'Segoe UI', system-ui, -apple-system, 'Roboto', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+
+        #player-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* องค์ประกอบ UI ทับบนวิดีโอ */
+        .nutv-label {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffcc00;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 6px 14px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            letter-spacing: 1px;
+            font-family: monospace;
+            pointer-events: none;
+        }
+
+        .controls-panel {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            z-index: 1000;
+            display: flex;
+            gap: 12px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            padding: 8px 16px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 204, 0, 0.5);
+        }
+
+        .volume-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 204, 0, 0.5);
+        }
+
+        .controls-panel.show, .volume-panel.show {
+            opacity: 1;
+        }
+
+        .control-btn, .volume-btn {
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            border: 1px solid #ffcc00;
+            padding: 8px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .control-btn:hover, .volume-btn:hover {
+            background: #ffcc00;
+            color: black;
+            transform: scale(1.02);
+        }
+
+        .volume-btn {
+            width: 44px;
+            padding: 8px 0;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .volume-slider {
+            width: 110px;
+            height: 5px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffcc00;
+            cursor: pointer;
+            box-shadow: 0 0 4px gold;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffcc00;
+            cursor: pointer;
+            border: none;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1002;
+            color: white;
+            backdrop-filter: blur(4px);
+        }
+
+        .loading-text {
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+
+        .loading-text:after {
+            content: '...';
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { opacity: 0; content: '.'; }
+            40% { opacity: 1; content: '..'; }
+            60%, 100% { opacity: 1; content: '...'; }
+        }
+
+        .autoplay-block-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(12px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1005;
+            text-align: center;
+            color: white;
+            gap: 20px;
+        }
+
+        .play-manual-btn {
+            background: #ffcc00;
+            color: #1e1e1e;
+            border: none;
+            padding: 14px 32px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+
+        .play-manual-btn:hover {
+            background: #ffdd44;
+            transform: scale(1.02);
+        }
+
+        .error-message {
+            font-size: 0.9rem;
+            color: #ffaa88;
+            margin-top: 15px;
+        }
+
+        /* responsive */
+        @media (max-width: 768px) {
+            .controls-panel { gap: 8px; padding: 5px 12px; bottom: 16px; left: 16px; }
+            .control-btn { padding: 5px 12px; font-size: 11px; }
+            .volume-panel { top: 12px; right: 12px; gap: 8px; padding: 4px 12px; }
+            .volume-slider { width: 80px; }
+            .nutv-label { bottom: 12px; right: 12px; font-size: 14px; padding: 4px 10px; }
+            .loading-text { font-size: 1.2rem; }
+        }
+
+        /* fullscreen class style */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+        }
+    </style>
+    <!-- HLS.js library สำหรับ HLS playback และตั้ง headers -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+<div id="player-wrapper">
+    <video id="video-player" playsinline webkit-playsinline muted></video>
+    
+    <div id="loading-container" class="loading-overlay">
+        <div class="loading-text">กำลังโหลด NUTV</div>
+        <div style="margin-top: 10px; font-size: 0.8rem;">ช่องสัญญาณสด</div>
+    </div>
+    
+    <div id="block-overlay" class="autoplay-block-overlay">
+        <p style="font-size: 1.2rem;">▶️ เบราว์เซอร์บล็อกการเล่นอัตโนมัติ</p>
+        <p>กรุณากดปุ่มด้านล่างเพื่อเริ่มรับชม</p>
+        <button class="play-manual-btn" id="force-play-btn">▶ เริ่มเล่น</button>
+        <div class="error-message" id="manual-error-msg"></div>
+    </div>
+    
+    <span class="nutv-label"><em>NUTV · สด</em></span>
+    
+    <div class="controls-panel" id="controls-panel">
+        <button class="control-btn" id="fullscreen-btn">เต็มจอ</button>
+        <button class="control-btn" id="normalscreen-btn">จอปกติ</button>
+        <button class="control-btn" id="autoplay-toggle-btn">เล่นอัตโนมัติ: เปิด</button>
+    </div>
+    
+    <div class="volume-panel" id="volume-panel">
+        <button class="volume-btn" id="mute-toggle-btn">🔊</button>
+        <input type="range" min="0" max="100" value="100" class="volume-slider" id="volume-range">
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ----- กำหนดค่า Stream และ Header -----
+        const STREAM_URL = "https://49-231-34-108-rewriter.ais-vidnt.com/ais/play/anevia/live/eds/TL001/HLS/TL001.m3u8";
+        const CUSTOM_HEADERS = {
+            "User-Agent": "AISPlay/2.9.17.29 (Linux;Android 11) ExoPlayerLib/2.9.6",
+            "Referer": "https://olympic-embed.ais-vidnt.com"
+        };
+        
+        // ----- DOM elements -----
+        const videoEl = document.getElementById('video-player');
+        const loadingDiv = document.getElementById('loading-container');
+        const blockOverlay = document.getElementById('block-overlay');
+        const forcePlayBtn = document.getElementById('force-play-btn');
+        const autoPlayToggleBtn = document.getElementById('autoplay-toggle-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const normalScreenBtn = document.getElementById('normalscreen-btn');
+        const muteBtn = document.getElementById('mute-toggle-btn');
+        const volumeSlider = document.getElementById('volume-range');
+        const controlsPanel = document.getElementById('controls-panel');
+        const volumePanel = document.getElementById('volume-panel');
+        const playerWrapper = document.getElementById('player-wrapper');
+        
+        // ----- สถานะหลัก -----
+        let hls = null;                 // instance Hls
+        let autoPlayEnabled = true;     // โหมดเล่นอัตโนมัติ (ถ้าเปิดจะพยายามเล่นเอง/ reconnect)
+        let isMuted = false;
+        let previousVolume = 100;
+        let isUserInitiatedPlay = false; // ป้องกัน loop ตอนกด manual
+        let playAttempted = false;
+        let streamActive = true;
+        let reconnectTimer = null;
+        let errorRetryCount = 0;
+        const MAX_RETRY = 5;
+        
+        // ---- ฟังก์ชันอัปเดต UI volume ----
+        function updateVolumeUI(value) {
+            if(!videoEl) return;
+            const vol = Math.min(100, Math.max(0, value));
+            videoEl.volume = vol / 100;
+            volumeSlider.value = vol;
+            if(vol === 0) {
+                muteBtn.textContent = '🔇';
+                isMuted = true;
+            } else if(vol < 50) {
+                muteBtn.textContent = '🔈';
+                isMuted = false;
+            } else {
+                muteBtn.textContent = '🔊';
+                isMuted = false;
+            }
+        }
+        
+        function setVolume(level) {
+            if(videoEl) {
+                videoEl.volume = level / 100;
+                updateVolumeUI(level);
+            }
+        }
+        
+        function toggleMute() {
+            if(!videoEl) return;
+            if(videoEl.volume > 0) {
+                previousVolume = videoEl.volume * 100;
+                setVolume(0);
+            } else {
+                setVolume(previousVolume > 0 ? previousVolume : 80);
+            }
+        }
+        
+        // --- แสดงปุ่มควบคุมชั่วคราว ---
+        let hideTimeout;
+        function showControlsTemporarily() {
+            controlsPanel.classList.add('show');
+            volumePanel.classList.add('show');
+            if(hideTimeout) clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                controlsPanel.classList.remove('show');
+                volumePanel.classList.remove('show');
+            }, 3000);
+        }
+        
+        // --- จัดการ Fullscreen ---
+        function toggleFullscreen() {
+            const elem = playerWrapper;
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => console.warn(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function handleFullscreenChange() {
+            if (document.fullscreenElement) {
+                playerWrapper.classList.add('fullscreen-mode');
+            } else {
+                playerWrapper.classList.remove('fullscreen-mode');
+            }
+            showControlsTemporarily();
+        }
+        
+        // ---- สร้าง HLS instance พร้อม Headers แบบกำหนดเอง ----
+        function initHlsStream() {
+            // ถ้ามี instance เก่าให้ทำลายก่อน
+            if(hls) {
+                try {
+                    hls.destroy();
+                } catch(e) {}
+                hls = null;
+            }
+            
+            if (!Hls.isSupported()) {
+                console.warn("HLS ไม่รองรับ ใช้ native fallback");
+                // Fallback กรณี native HLS (Safari)
+                if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoEl.src = STREAM_URL;
+                    handleNativePlay();
+                } else {
+                    showErrorOverlay("เบราว์เซอร์ไม่รองรับการเล่น HLS");
+                }
+                return;
+            }
+            
+            hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                xhrSetup: function(xhr, url) {
+                    // กำหนด headers ตามที่ต้องการ
+                    xhr.setRequestHeader('User-Agent', CUSTOM_HEADERS['User-Agent']);
+                    xhr.setRequestHeader('Referer', CUSTOM_HEADERS['Referer']);
+                    // เพิ่ม header อื่น ๆ เผื่อ case
+                    xhr.withCredentials = false; // ป้องกัน CORS กระทบ
+                },
+                // ปรับ buffer เพื่อความเสถียร
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                startFragPrefetch: true,
+                debug: false
+            });
+            
+            hls.attachMedia(videoEl);
+            hls.loadSource(STREAM_URL);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log("HLS Manifest parsed, ready to play");
+                errorRetryCount = 0;   // รีเซ็ต error counter เมื่อโหลดสำเร็จ
+                if(loadingDiv) loadingDiv.style.display = 'none';
+                // ถ้าอยู่ในโหมด autoPlayEnabled ให้พยายามเล่นอัตโนมัติ
+                if(autoPlayEnabled && !isUserInitiatedPlay) {
+                    attemptAutoPlay();
+                }
+                showControlsTemporarily();
+            });
+            
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error("HLS Error:", data);
+                if (data.fatal) {
+                    switch(data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            // network error: พยายามรีคอนเนค
+                            if(autoPlayEnabled && errorRetryCount < MAX_RETRY) {
+                                errorRetryCount++;
+                                console.log(`รีเชื่อมต่อ HLS ครั้งที่ ${errorRetryCount}`);
+                                setTimeout(() => {
+                                    if(hls) {
+                                        hls.destroy();
+                                        initHlsStream();
+                                    }
+                                }, 3000);
+                            } else if (!autoPlayEnabled) {
+                                showErrorOverlay("เครือข่ายขัดข้อง, รอเล่นด้วยตนเอง");
+                            } else {
+                                showErrorOverlay("ไม่สามารถเชื่อมต่อสตรีมได้ กรุณารีเฟรช");
+                            }
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            // media error ลอง recover
+                            if(hls) hls.recoverMediaError();
+                            break;
+                        default:
+                            if(autoPlayEnabled && errorRetryCount < MAX_RETRY) {
+                                errorRetryCount++;
+                                setTimeout(() => {
+                                    if(hls) hls.destroy();
+                                    initHlsStream();
+                                }, 4000);
+                            } else {
+                                showErrorOverlay("เกิดข้อผิดพลาดในการเล่นสตรีม");
+                            }
+                            break;
+                    }
+                } else {
+                    // non-fatal, log only
+                    if(data.details === 'bufferStalledError') {
+                        console.log("buffer stalled, attempting resume");
+                        if(videoEl && videoEl.paused && autoPlayEnabled && !isUserInitiatedPlay) {
+                            videoEl.play().catch(e=>console.log("autoplay resume fail", e));
+                        }
+                    }
+                }
+            });
+            
+            hls.on(Hls.Events.BUFFER_APPENDING, function() {
+                if(loadingDiv && loadingDiv.style.display !== 'none') loadingDiv.style.display = 'none';
+            });
+            
+            // event เมื่อเล่นสำเร็จ
+            videoEl.addEventListener('play', function onPlay() {
+                if(loadingDiv) loadingDiv.style.display = 'none';
+                if(blockOverlay) blockOverlay.style.display = 'none';
+                isUserInitiatedPlay = false;
+                streamActive = true;
+                showControlsTemporarily();
+            });
+            
+            videoEl.addEventListener('pause', function() {
+                // ไม่ต้องทำอะไร ถ้า autoplay ปิดก็ปล่อย
+            });
+            
+            videoEl.addEventListener('waiting', () => {
+                if(autoPlayEnabled && !videoEl.paused) {
+                    // แสดง loading เล็กน้อยได้
+                }
+            });
+        }
+        
+        // ฟังก์ชันสำหรับ native HLS (Safari)
+        function handleNativePlay() {
+            videoEl.src = STREAM_URL;
+            // สำหรับ native เราสามารถเพิ่ม headers ได้ยาก แต่เราจะลองใช้ fetch + blob? ไม่จำเป็น ใช้วิธีเดิมแต่ไม่มีการ์ด custom header
+            // แต่ใน Safari หากต้องการ header อาจต้องใช้ fetch API แต่ HLS native ไม่สนับสนุน custom header สำหรับ m3u8 segments
+            // อย่างไรก็ตาม เราจำเป็นต้องพยายาม set ด้วย MediaSource? ยาก. ปล่อย native ไป
+            if(autoPlayEnabled) {
+                videoEl.play().catch(e => {
+                    console.log("Native autoplay blocked", e);
+                    blockOverlay.style.display = 'flex';
+                });
+            }
+            videoEl.addEventListener('loadedmetadata', () => {
+                if(loadingDiv) loadingDiv.style.display = 'none';
+            });
+        }
+        
+        // พยายามเล่นอัตโนมัติ (เรียกผ่าน video element)
+        function attemptAutoPlay() {
+            if(!videoEl) return;
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    // สำเร็จ
+                    if(blockOverlay) blockOverlay.style.display = 'none';
+                    if(loadingDiv) loadingDiv.style.display = 'none';
+                }).catch(err => {
+                    console.log("Autoplay rejected:", err);
+                    // แสดง overlay ให้กดเล่นเองถ้ายังไม่มีปุ่ม
+                    if(autoPlayEnabled && !isUserInitiatedPlay) {
+                        blockOverlay.style.display = 'flex';
+                    }
+                });
+            }
+        }
+        
+        // แสดง error และซ่อน loading
+        function showErrorOverlay(msg) {
+            if(loadingDiv) loadingDiv.style.display = 'none';
+            if(blockOverlay) {
+                const errSpan = document.getElementById('manual-error-msg');
+                if(errSpan) errSpan.innerText = msg || "เกิดข้อผิดพลาด กรุณาคลิกเริ่มเล่นอีกครั้ง";
+                blockOverlay.style.display = 'flex';
+            }
+        }
+        
+        // รีสตาร์ทสตรีมสด (เรียกเมื่อหลุดหรือตัด)
+        function restartStream() {
+            if(!autoPlayEnabled) return;
+            if(!hls && Hls.isSupported()) {
+                initHlsStream();
+            } else if(hls) {
+                // รีโหลด source
+                try {
+                    hls.destroy();
+                } catch(e) {}
+                initHlsStream();
+            } else if(videoEl) {
+                // fallback
+                videoEl.load();
+                attemptAutoPlay();
+            }
+            if(loadingDiv) loadingDiv.style.display = 'flex';
+        }
+        
+        // ตรวจสอบสตรีมเป็นระยะ (ถ้าหยุดเล่นและ autoplay on -> restart)
+        let watchdogInterval = null;
+        function startWatchdog() {
+            if(watchdogInterval) clearInterval(watchdogInterval);
+            watchdogInterval = setInterval(() => {
+                if(autoPlayEnabled && videoEl && !videoEl.paused && !streamActive) {
+                    // ตรวจจับเพิ่มเติม: ถ้า currentTime ค้างและ network idle
+                    if(videoEl.networkState === videoEl.NETWORK_IDLE && videoEl.readyState < 2) {
+                        console.log("watchdog: stream stuck, restart");
+                        restartStream();
+                    }
+                }
+                // ถ้าเล่นอยู่แต่ไม่มีกิจกรรม error อยู่แล้วไม่ต้องทำ
+                if(autoPlayEnabled && videoEl && videoEl.paused && !blockOverlay.style.display === 'flex' && !videoEl.ended) {
+                    // ถ้าหยุดโดยไม่ใช่ user และ autoplay on ให้พยายามเล่น
+                    if(!isUserInitiatedPlay && document.hasFocus()) {
+                        attemptAutoPlay();
+                    }
+                }
+                streamActive = !(videoEl && videoEl.paused && videoEl.readyState === 0);
+            }, 15000);
+        }
+        
+        // ----- ปุ่มกด Manual Play เมื่อถูกบล็อก -----
+        function manualPlay() {
+            isUserInitiatedPlay = true;
+            if(blockOverlay) blockOverlay.style.display = 'none';
+            if(loadingDiv) loadingDiv.style.display = 'flex';
+            
+            // กรณี HLS ยังไม่ถูกสร้าง หรือ destroyed
+            if(!hls && Hls.isSupported()) {
+                initHlsStream();
+                // รอให้ manifest โหลด แล้ว video จะเล่นอัตโนมัติหลังจาก attach
+                setTimeout(() => {
+                    if(videoEl && videoEl.paused) {
+                        videoEl.play().catch(e=>{
+                            console.warn("manual play error", e);
+                            if(blockOverlay) blockOverlay.style.display = 'flex';
+                        });
+                    }
+                }, 500);
+            } else if(hls) {
+                // ถ้ามี hls อยู่แล้วแค่เรียก play
+                videoEl.play().then(()=>{
+                    if(loadingDiv) loadingDiv.style.display = 'none';
+                }).catch(err=>{
+                    console.log("manual play catch", err);
+                    if(blockOverlay) blockOverlay.style.display = 'flex';
+                });
+            } else if(videoEl) {
+                videoEl.play().catch(e=>{
+                    console.log("native manual play error", e);
+                    if(blockOverlay) blockOverlay.style.display = 'flex';
+                });
+            }
+            // ซ่อน overlay error ถ้ามี
+            setTimeout(() => {
+                isUserInitiatedPlay = false;
+            }, 1000);
+        }
+        
+        // เปิด/ปิดโหมด autoPlay
+        function toggleAutoPlayMode() {
+            autoPlayEnabled = !autoPlayEnabled;
+            autoPlayToggleBtn.textContent = autoPlayEnabled ? 'เล่นอัตโนมัติ: เปิด' : 'เล่นอัตโนมัติ: ปิด';
+            if(autoPlayEnabled) {
+                // ถ้าเปิดโหมด และวิดีโอหยุดอยู่ พยายามเล่น
+                if(videoEl && videoEl.paused && !blockOverlay.style.display === 'flex') {
+                    attemptAutoPlay();
+                }
+                // รีสตาร์ท watchdog และอาจรีคอนเนคหากสตรีมหยุด
+                restartStream();
+            } else {
+                // ปิดโหมด autoplay ไม่ต้องทำอะไร
+                if(reconnectTimer) clearTimeout(reconnectTimer);
+            }
+            showControlsTemporarily();
+        }
+        
+        // ---- Event listeners สำหรับ UI ----
+        fullscreenBtn.addEventListener('click', () => {
+            toggleFullscreen();
+            showControlsTemporarily();
+        });
+        normalScreenBtn.addEventListener('click', () => {
+            if(document.fullscreenElement) {
+                document.exitFullscreen();
+                showControlsTemporarily();
+            }
+        });
+        autoPlayToggleBtn.addEventListener('click', toggleAutoPlayMode);
+        muteBtn.addEventListener('click', () => {
+            toggleMute();
+            showControlsTemporarily();
+        });
+        volumeSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            setVolume(val);
+            showControlsTemporarily();
+        });
+        
+        forcePlayBtn.addEventListener('click', () => {
+            manualPlay();
+        });
+        
+        // แสดง controls เมื่อเลื่อนเมาส์ หรือแตะหน้าจอ
+        playerWrapper.addEventListener('mousemove', (e) => {
+            const rect = playerWrapper.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            if(rect.height - y < 100) showControlsTemporarily();
+            else {
+                // ถ้าเมาส์อยู่บนวิดีโอแสดงสั้น ๆ ได้
+                showControlsTemporarily(); 
+            }
+        });
+        playerWrapper.addEventListener('touchstart', () => {
+            showControlsTemporarily();
+        });
+        
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        
+        // ตรวจสอบ visibility เมื่อแท็บกลับมา กระตุ้นเล่นต่อ
+        document.addEventListener('visibilitychange', () => {
+            if(!document.hidden && autoPlayEnabled && videoEl && videoEl.paused && !blockOverlay.style.display === 'flex') {
+                console.log("tab active again, attempt resume");
+                attemptAutoPlay();
+            }
+        });
+        
+        // เริ่มต้นระบบสตรีม
+        initHlsStream();
+        startWatchdog();
+        
+        // ตั้งค่าเริ่มต้นเสียง
+        if(videoEl) {
+            videoEl.volume = 1.0;
+            updateVolumeUI(100);
+        }
+        
+        // ถ้าหลังจาก 3 วิ แล้วยังไม่เกิด play และยังมี loading ให้ลอง autoplay อีกครั้ง
+        setTimeout(() => {
+            if(autoPlayEnabled && videoEl && videoEl.paused && !blockOverlay.style.display === 'flex' && loadingDiv.style.display !== 'none') {
+                attemptAutoPlay();
+            }
+        }, 2000);
+        
+        // โหลดเสร็จ ซ่อน loading หลังจาก manifest เสร็จ
+        window.addEventListener('load', ()=>{
+            // ป้องกัน autoplay fail จัดการ
+            if(videoEl && videoEl.paused && autoPlayEnabled) {
+                setTimeout(() => attemptAutoPlay(), 300);
+            }
+        });
+        
+        // clean up เล็กน้อย
+        window.addEventListener('beforeunload', ()=>{
+            if(hls) hls.destroy();
+            if(watchdogInterval) clearInterval(watchdogInterval);
+        });
+    })();
+</script>
+</body>
+</html>
