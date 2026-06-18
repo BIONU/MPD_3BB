@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MPD Player</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+
+<style>
+body{
+  background:#111;
+  font-family:Arial;
+  text-align:center;
+  color:white;
+}
+
+#thumbnail{
+  width:400px;
+  cursor:pointer;
+  border-radius:10px;
+}
+
+#videoPlayer{
+  width:80%;
+  max-width:900px;
+  margin-top:20px;
+  display:none;
+}
+</style>
+</head>
+
+<body>
+
+<h2>MONO29 HD</h2>
+
+<img id="thumbnail"
+src="https://img5.pic.in.th/file/secure-sv1/mono_29.png">
+
+<br>
+
+<video id="videoPlayer" controls autoplay></video>
+
+<script>
+
+const manifestUri =
+"https://cri-streamer3.cdn.3bbtv.com:8443/3bb/live/29/29.mpd";
+
+const licenseKeyId = "96a14b36335645b391bbbb48c424fec7";
+const licenseKey   = "e6971b27837a4822832d8215156bb516";
+
+async function initPlayer(){
+
+const video = document.getElementById('videoPlayer');
+const player = new shaka.Player(video);
+
+player.configure({
+drm:{
+clearKeys:{
+[licenseKeyId]: licenseKey
+}
+}
+});
+
+try{
+await player.load(manifestUri);
+console.log("Video loaded");
+}catch(e){
+console.error("Error loading",e);
+}
+
+}
+
+document.getElementById("thumbnail").onclick = function(){
+
+this.style.display="none";
+
+const video = document.getElementById("videoPlayer");
+video.style.display="block";
+
+initPlayer();
+
+};
+
+</script>
+
+</body>
+</html>
