@@ -1,86 +1,517 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>MPD Player</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONO29 HD - MPD Player</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <!-- Shaka Player v4.3.5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js">
+    </script>
 
-<style>
-body{
-  background:#111;
-  font-family:Arial;
-  text-align:center;
-  color:white;
-}
+    <style>
+        /* === Reset & Base === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-#thumbnail{
-  width:400px;
-  cursor:pointer;
-  border-radius:10px;
-}
+        body {
+            background: #0b0b0b;
+            font-family: 'Segoe UI', 'Sukhumvit Set', Arial, sans-serif;
+            text-align: center;
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-#videoPlayer{
-  width:80%;
-  max-width:900px;
-  margin-top:20px;
-  display:none;
-}
-</style>
+        .container {
+            max-width: 960px;
+            width: 100%;
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 30px 20px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            border: 1px solid #2a2a2a;
+        }
+
+        h2 {
+            font-weight: 400;
+            font-size: 2rem;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 200, 50, 0.15);
+        }
+
+        h2 small {
+            font-size: 1rem;
+            color: #888;
+            font-weight: 300;
+        }
+
+        /* === Thumbnail === */
+        #thumbnail {
+            width: 100%;
+            max-width: 420px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.3s ease;
+            display: block;
+            margin: 10px auto 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            border: 1px solid #333;
+        }
+
+        #thumbnail:hover {
+            transform: scale(1.02);
+            box-shadow: 0 12px 40px rgba(255, 200, 50, 0.2);
+        }
+
+        .click-hint {
+            color: #aaa;
+            font-size: 0.95rem;
+            margin-top: 6px;
+            letter-spacing: 0.5px;
+        }
+        .click-hint span {
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* === Video Player === */
+        #videoPlayer {
+            width: 100%;
+            max-width: 900px;
+            border-radius: 14px;
+            background: #000;
+            display: none;
+            margin: 10px auto 0;
+            aspect-ratio: 16 / 9;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        /* === Loading Overlay === */
+        #loadingIndicator {
+            display: none;
+            margin: 30px auto 10px;
+            color: #ffcc44;
+            font-size: 1.1rem;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 4px solid #333;
+            border-top: 4px solid #ffcc44;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* === Error Message === */
+        #errorBox {
+            display: none;
+            background: #2a0f0f;
+            border-left: 6px solid #ff5555;
+            padding: 16px 22px;
+            border-radius: 12px;
+            margin: 20px auto 0;
+            max-width: 700px;
+            text-align: left;
+            color: #ffb3b3;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            box-shadow: 0 4px 20px rgba(255, 0, 0, 0.15);
+        }
+
+        #errorBox strong {
+            color: #ff8888;
+        }
+
+        #retryBtn {
+            background: #ffcc44;
+            color: #111;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background 0.2s;
+            display: inline-block;
+        }
+
+        #retryBtn:hover {
+            background: #ffdb6b;
+        }
+
+        /* === Status Badge === */
+        #statusBadge {
+            display: inline-block;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #666;
+            background: #222;
+            padding: 4px 18px;
+            border-radius: 30px;
+            letter-spacing: 0.3px;
+        }
+
+        /* === Responsive === */
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px 12px 28px;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            #thumbnail {
+                max-width: 280px;
+            }
+            #errorBox {
+                font-size: 0.85rem;
+                padding: 12px 16px;
+            }
+        }
+
+        /* === Shaka 自带样式微调 === */
+        .shaka-video-container {
+            border-radius: 14px !important;
+            overflow: hidden;
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>MONO29 HD</h2>
+    <div class="container">
 
-<img id="thumbnail"
-src="https://img5.pic.in.th/file/secure-sv1/mono_29.png">
+        <h2>📺 MONO29 <small>HD</small></h2>
 
-<br>
+        <!-- 缩略图（点击加载播放器） -->
+        <img id="thumbnail"
+        src="https://img5.pic.in.th/file/secure-sv1/mono_29.png"
+        alt="MONO29 HD 缩略图"
+        title="คลิกเพื่อเล่นสด">
 
-<video id="videoPlayer" controls autoplay></video>
+        <div class="click-hint">
+            <span>▶ คลิกที่รูปเพื่อเริ่มรับชม</span>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div id="loadingIndicator">
+            <div class="spinner"></div>
+            <span>กำลังโหลดสตรีม...</span>
+        </div>
+
+        <!-- 视频播放器 -->
+        <video id="videoPlayer"
+        controls
+        autoplay
+        playsinline
+        muted>
+    </video>
+
+    <!-- 错误信息 -->
+    <div id="errorBox">
+        <strong>⚠️ ไม่สามารถโหลดวิดีโอได้</strong>
+        <p id="errorDetail">โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต และลองอีกครั้ง</p>
+        <button id="retryBtn">🔄 ลองใหม่</button>
+    </div>
+
+    <div id="statusBadge">● พร้อมรับชม</div>
+
+</div>
 
 <script>
+    (function() {
 
-const manifestUri =
-"https://cri-streamer3.cdn.3bbtv.com:8443/3bb/live/29/29.mpd";
+        // ============================================================
+        //  🔧  แก้ไขแล้ว:  ลบอักขระ '้' ที่ผิดพลาดออกจาก URL ข้างล่าง
+        // ============================================================
+        const manifestUri =
+            "https://cco-streamer1.cdn.3bbtv.com:8443/3bb/live/29/29.mpd";
 
-const licenseKeyId = "96a14b36335645b391bbbb48c424fec7";
-const licenseKey   = "e6971b27837a4822832d8215156bb516";
+        const licenseKeyId = "96a14b36335645b391bbbb48c424fec7";
+        const licenseKey = "e6971b27837a4822832d8215156bb516";
 
-async function initPlayer(){
+        // ---- DOM refs ----
+        const thumbnail = document.getElementById('thumbnail');
+        const video = document.getElementById('videoPlayer');
+        const loadingEl = document.getElementById('loadingIndicator');
+        const errorBox = document.getElementById('errorBox');
+        const errorDetail = document.getElementById('errorDetail');
+        const retryBtn = document.getElementById('retryBtn');
+        const statusBadge = document.getElementById('statusBadge');
 
-const video = document.getElementById('videoPlayer');
-const player = new shaka.Player(video);
+        let player = null;
+        let isPlaying = false;
 
-player.configure({
-drm:{
-clearKeys:{
-[licenseKeyId]: licenseKey
-}
-}
-});
+        // ============================================================
+        //  Shaka Polyfill (ช่วยให้รองรับเบราว์เซอร์เก่า)
+        // ============================================================
+        if (typeof shaka !== 'undefined' && shaka.polyfill) {
+            try {
+                shaka.polyfill.installAll();
+                console.log('✅ Shaka polyfills installed.');
+            } catch (e) {
+                console.warn('⚠️ Polyfill install failed:', e);
+            }
+        }
 
-try{
-await player.load(manifestUri);
-console.log("Video loaded");
-}catch(e){
-console.error("Error loading",e);
-}
+        // ============================================================
+        //  ฟังก์ชันแสดง/ซ่อน Loading
+        // ============================================================
+        function showLoading(show) {
+            loadingEl.style.display = show ? 'flex' : 'none';
+        }
 
-}
+        function showError(message) {
+            errorDetail.textContent = message || 'ไม่ทราบสาเหตุ โปรดลองใหม่ภายหลัง';
+            errorBox.style.display = 'block';
+            statusBadge.textContent = '❌ เกิดข้อผิดพลาด';
+            statusBadge.style.color = '#ff6666';
+        }
 
-document.getElementById("thumbnail").onclick = function(){
+        function hideError() {
+            errorBox.style.display = 'none';
+            statusBadge.textContent = '● กำลังเชื่อมต่อ...';
+            statusBadge.style.color = '#ffcc44';
+        }
 
-this.style.display="none";
+        function setStatus(text, color = '#888') {
+            statusBadge.textContent = text;
+            statusBadge.style.color = color;
+        }
 
-const video = document.getElementById("videoPlayer");
-video.style.display="block";
+        // ============================================================
+        //  สร้าง Shaka Player
+        // ============================================================
+        function createPlayer() {
+            if (player) {
+                try { player.destroy(); } catch (_) {}
+                player = null;
+            }
 
-initPlayer();
+            player = new shaka.Player(video);
 
-};
+            // ---- ตั้งค่า DRM (Clear Key) ----
+            player.configure({
+                drm: {
+                    clearKeys: {
+                        [licenseKeyId]: licenseKey
+                    }
+                },
+                // ปรับ live stream ให้หน่วงน้อยลง
+                liveSync: {
+                    syncDelay: 8,
+                    minDelay: 3,
+                    maxDelay: 15
+                },
+                // จัดการ network timeout
+                networking: {
+                    timeout: 15000,
+                    retryParameters: {
+                        timeout: 15000,
+                        maxAttempts: 3,
+                        backoffFactor: 2,
+                        baseDelay: 1000,
+                        fuzzFactor: 0.5
+                    }
+                }
+            });
 
+            // ---- ดีบัก: แสดง log จาก Shaka ----
+            player.addEventListener('error', onPlayerError);
+            player.addEventListener('buffering', (e) => {
+                console.log('⏳ Buffering:', e.buffering);
+            });
+
+            // ปรับเสียงเริ่มต้น
+            video.volume = 0.8;
+
+            return player;
+        }
+
+        // ============================================================
+        //  โหลด MPD
+        // ============================================================
+        async function loadStream() {
+            if (!player) {
+                createPlayer();
+            }
+
+            hideError();
+            showLoading(true);
+            setStatus('⏳ กำลังโหลด...', '#ffcc44');
+
+            try {
+                await player.load(manifestUri);
+                isPlaying = true;
+                showLoading(false);
+                setStatus('▶ กำลังเล่นสด', '#66dd88');
+                console.log('✅ โหลดวิดีโอสำเร็จ');
+                video.style.display = 'block';
+                // พยายามเล่นอัตโนมัติ
+                try {
+                    await video.play();
+                } catch (autoplayErr) {
+                    console.warn('⚠️ Autoplay ถูกบล็อก:', autoplayErr);
+                    // ผู้ใช้ต้องกดเล่นเอง
+                }
+            } catch (err) {
+                console.error('❌ โหลดล้มเหลว:', err);
+                showLoading(false);
+                let msg = err.message || 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์';
+                // แปลงข้อผิดพลาดให้เข้าใจง่าย
+                if (msg.includes('HTTP 404')) {
+                    msg = 'ไม่พบสตรีม (404) — ลิงก์อาจหมดอายุ';
+                } else if (msg.includes('CORS')) {
+                    msg = 'เซิร์ฟเวอร์ปฏิเสธการเชื่อมต่อ (CORS)';
+                } else if (msg.includes('timeout')) {
+                    msg = 'การเชื่อมต่อหมดเวลา — เช็คอินเทอร์เน็ต';
+                } else if (msg.includes('MEDIA')) {
+                    msg = 'รูปแบบวิดีโอไม่รองรับ';
+                }
+                showError('❌ ' + msg);
+                video.style.display = 'none';
+                // แสดง thumbnail กลับมา
+                thumbnail.style.display = 'block';
+                // รีเซ็ตสถานะ
+                isPlaying = false;
+                setStatus('● พร้อมรับชม', '#888');
+            }
+        }
+
+        // ============================================================
+        //  Event: ข้อผิดพลาดจาก Shaka
+        // ============================================================
+        function onPlayerError(event) {
+            const e = event.detail;
+            console.error('🔥 Shaka error:', e);
+            // ไม่แสดง error box ซ้ำซ้อน ถ้า loadStream จัดการอยู่แล้ว
+            if (e && e.code === 1002) { // NETWORK error
+                // ปล่อยให้ loadStream จัดการ
+            } else {
+                showError('⚠️ ' + (e.message || 'ข้อผิดพลาดภายในตัวเล่น'));
+            }
+        }
+
+        // ============================================================
+        //  คลิกที่ thumbnail → เริ่มเล่น
+        // ============================================================
+        thumbnail.onclick = function() {
+            // ซ่อน thumbnail และ hint
+            this.style.display = 'none';
+            document.querySelector('.click-hint').style.display = 'none';
+
+            // เรียกโหลด
+            loadStream();
+        };
+
+        // ============================================================
+        //  ปุ่ม Retry
+        // ============================================================
+        retryBtn.addEventListener('click', function() {
+            hideError();
+            // ถ้า player ยังอยู่ให้ destroy แล้วสร้างใหม่
+            if (player) {
+                try {
+                    player.destroy();
+                } catch (_) {}
+                player = null;
+            }
+            video.style.display = 'none';
+            thumbnail.style.display = 'block';
+            document.querySelector('.click-hint').style.display = 'block';
+            setStatus('● พร้อมรับชม', '#888');
+            // จำลองคลิก thumbnail
+            thumbnail.click();
+        });
+
+        // ============================================================
+        //  จัดการปิด / เปลี่ยนหน้า
+        // ============================================================
+        window.addEventListener('beforeunload', function() {
+            if (player) {
+                try { player.destroy(); } catch (_) {}
+            }
+        });
+
+        // ============================================================
+        //  ตรวจจับการคลิกเล่นบน video (ถ้า autoplay ถูกบล็อก)
+        // ============================================================
+        video.addEventListener('play', function() {
+            setStatus('▶ กำลังเล่นสด', '#66dd88');
+        });
+
+        video.addEventListener('pause', function() {
+            if (isPlaying) {
+                setStatus('⏸ หยุดชั่วคราว', '#ffaa44');
+            }
+        });
+
+        video.addEventListener('waiting', function() {
+            setStatus('⏳ กำลังบัฟเฟอร์...', '#ffaa44');
+        });
+
+        video.addEventListener('canplay', function() {
+            if (isPlaying) {
+                setStatus('▶ กำลังเล่นสด', '#66dd88');
+            }
+        });
+
+        // ============================================================
+        //  ถ้า Shaka โหลดไม่สำเร็จ (CDN ล่ม)
+        // ============================================================
+        if (typeof shaka === 'undefined') {
+            showError('❌ ไม่สามารถโหลด Shaka Player (CDN) ได้');
+            document.querySelector('.click-hint').style.display = 'none';
+            thumbnail.style.cursor = 'default';
+            thumbnail.onclick = null;
+            setStatus('❌ ระบบขัดข้อง', '#ff5555');
+        } else {
+            console.log('✅ Shaka Player พร้อมใช้งาน');
+        }
+
+        // ============================================================
+        //  ตรวจสอบว่าเบราว์เซอร์รองรับ MediaSource หรือไม่
+        // ============================================================
+        if (!window.MediaSource) {
+            showError('❌ เบราว์เซอร์ของคุณไม่รองรับ Media Source Extensions');
+            thumbnail.style.cursor = 'default';
+            thumbnail.onclick = null;
+            setStatus('❌ เบราว์เซอร์ไม่รองรับ', '#ff5555');
+        }
+
+        console.log('🚀 MPD Player พร้อมใช้งาน (แก้ไขแล้ว)');
+
+    })();
 </script>
 
 </body>
